@@ -47,7 +47,11 @@ logs/
 # VS Code
 
 .vscode/
+
+#Sublime text
+
 *.sublime-project
+*.sublime-workspace
 
 # GoLand / IntelliJ
 
