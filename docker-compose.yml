@@ -6,9 +6,9 @@ services:
     container_name: online_queue_postgres
     restart: always
     environment:
-      POSTGRES_USER: booking_user
-      POSTGRES_PASSWORD: booking_pass
-      POSTGRES_DB: booking_db
+      POSTGRES_USER: online_queue_db_user
+      POSTGRES_PASSWORD: online_queue_db_pass
+      POSTGRES_DB: online_queue_db
     ports:
       - "5432:5432"
     volumes:
