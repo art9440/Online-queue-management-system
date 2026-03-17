@@ -27,6 +27,12 @@ func (c *Client) Do(ctx context.Context, req *http.Request) (*http.Response, err
 	log := logger.From(ctx)
 	log.Debug("Making HTTP request", "method", req.Method, "url", req.URL.String())
 	resp, err := c.client.Do(req)
+
+	if err != nil {
+		log.Error("Error making HTTP request", "method", req.Method, "url", req.URL.String(), "error", err)
+		return nil, fmt.Errorf(ErrMakingRequest, err)
+	}
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		log.Error("Received non-successful HTTP status code", "method", req.Method, "url", req.URL.String(), "status", resp.StatusCode)
 		defer func() {
@@ -37,10 +43,6 @@ func (c *Client) Do(ctx context.Context, req *http.Request) (*http.Response, err
 		return nil, fmt.Errorf("received non-successful HTTP status code: %d", resp.StatusCode)
 	}
 
-	if err != nil {
-		log.Error("Error making HTTP request", "method", req.Method, "url", req.URL.String(), "error", err)
-		return nil, fmt.Errorf(ErrMakingRequest, err)
-	}
 	log.Debug("HTTP request completed", "method", req.Method, "url", req.URL.String(), "status", resp.StatusCode)
 	return resp, nil
 }
@@ -62,12 +64,6 @@ func (c *Client) Post(ctx context.Context, url string, bodyType string, body io.
 	log.Debug("Creating POST request", "url", url)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
 
-	defer func() {
-		if err := body.Close(); err != nil {
-			log.Error("Error closing request body", "url", url, "error", err)
-		}
-	}()
-
 	if err != nil {
 		log.Error("Error creating POST request", "url", url, "error", err)
 		return nil, fmt.Errorf(ErrCreatingRequest, err)
@@ -82,12 +78,6 @@ func (c *Client) Put(ctx context.Context, url string, bodyType string, body io.R
 	log := logger.From(ctx)
 	log.Debug("Creating PUT request", "url", url)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, body)
-
-	defer func() {
-		if err := body.Close(); err != nil {
-			log.Error("Error closing request body", "url", url, "error", err)
-		}
-	}()
 
 	if err != nil {
 		log.Error("Error creating PUT request", "url", url, "error", err)
