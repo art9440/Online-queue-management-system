@@ -1,6 +1,18 @@
 version: "3.9"
 
+
+
 services:
+
+  registration:
+    build:
+      context: .
+      dockerfile: services/registration/registration.Dockerfile
+    ports:
+      - "8081:8081"
+    env_file:
+      - .env
+      
   postgres:
     image: postgres:15
     container_name: online_queue_postgres
