@@ -1,4 +1,4 @@
-package registration
+package main
 
 import (
 	"Online-queue-management-system/libs/logger"
