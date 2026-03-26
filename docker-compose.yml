@@ -6,13 +6,43 @@ services:
     container_name: online_queue_postgres
     restart: always
     environment:
-      POSTGRES_USER: online_queue_db_user
-      POSTGRES_PASSWORD: online_queue_db_pass
-      POSTGRES_DB: online_queue_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: ./services/migrate/migration.Dockerfile
+    container_name: online_queue_migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    restart: "no"
+
+  registration:
+    build:
+      context: .
+      dockerfile: ./services/registration/registration.Dockerfile
+    container_name: online_queue_registration
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "8081:8081"
+    env_file:
+      - .env
 
 volumes:
   postgres_data:
