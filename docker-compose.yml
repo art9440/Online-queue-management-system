@@ -18,18 +18,18 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-  
+
   redis:
     image: redis:7
-    container_name: redis
-    
+    container_name: online_queue_redis
+    restart: always
     ports:
       - "6379:6379"
     healthcheck:
-    test: ["CMD", "redis-cli", "ping"]
-    interval: 5s
-    timeout: 3s
-    retries: 5
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   migrate:
     build:
@@ -42,6 +42,21 @@ services:
     env_file:
       - .env
     restart: "no"
+
+  auth:
+    build:
+      context: .
+      dockerfile: ./services/auth/auth.Dockerfile
+    container_name: online_queue_auth
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    ports:
+      - "8082:8082"
+    env_file:
+      - .env
 
   registration:
     build:
