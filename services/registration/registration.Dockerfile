@@ -1,28 +1,23 @@
-FROM golang:1.26-alpine AS builder
+FROM golang:1.26 AS builder
 
 WORKDIR /app
 
-# зависимости
 COPY go.mod go.sum ./
 RUN go mod download
 
-# код
 COPY services ./services
 COPY libs ./libs
 
-# билд
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o registration ./services/registration/cmd
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/registration ./services/registration/cmd
 
-FROM alpine:3.20
+FROM debian:bookworm-slim
 
 WORKDIR /app
 
-COPY --from=builder /app/registration .
+COPY --from=builder /app/registration /app/registration
 
-# безопасность
-RUN adduser -D appuser
-USER appuser
+#RUN chmod +x /app/registration
 
 EXPOSE 8081
 
-CMD ["./registration"]
+CMD ["/app/registration"]

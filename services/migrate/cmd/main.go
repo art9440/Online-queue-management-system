@@ -40,7 +40,7 @@ func buildDSN() string {
 	port := mustEnv("DB_PORT")
 	user := mustEnv("DB_USER")
 	password := mustEnv("DB_PASSWORD")
-	dbname := mustEnv("DB_NAME")
+	dbname := mustEnv("POSTGRES_DB")
 	sslmode := getEnv("DB_SSLMODE", "disable")
 
 	return fmt.Sprintf(

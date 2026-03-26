@@ -1,4 +1,4 @@
-package registration
+package main
 
 import (
 	"Online-queue-management-system/libs/logger"
@@ -35,4 +35,10 @@ func main() {
 	}
 
 	stop()
+}
+
+func run(ctx context.Context) error {
+	for{
+
+	}
 }

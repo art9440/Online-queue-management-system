@@ -22,7 +22,7 @@ services:
   migrate:
     build:
       context: .
-      dockerfile: ./services/migrate/Dockerfile
+      dockerfile: ./services/migrate/migration.Dockerfile
     container_name: online_queue_migrate
     depends_on:
       postgres:
