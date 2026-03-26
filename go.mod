@@ -2,9 +2,6 @@ module Online-queue-management-system
 
 go 1.26.0
 
-<<<<<<< HEAD
-require github.com/joho/godotenv v1.5.1
-=======
 require (
 	github.com/jackc/pgx/v5 v5.9.1
 	github.com/joho/godotenv v1.5.1
@@ -25,4 +22,3 @@ require (
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 )
->>>>>>> feature/redis
