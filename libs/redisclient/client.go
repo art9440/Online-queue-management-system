@@ -10,14 +10,19 @@ type Client struct {
 	*redis.Client
 }
 
-func New(addr string) *Client {
+func New(ctx context.Context, cfg config.Config, timeout time.Duration) (*redis.Client, error) {
 	rdb := redis.NewClient(&redis.Options{
-		Addr: addr,
+		Addr:     cfg.RedisAddr,
+		Password: cfg.RedisPassword,
+		DB:       cfg.RedisDB,
 	})
 
-	return &Client{rdb}
-}
+	pingCtx, cancel := context.WithTimeout(ctx, timeout*time.Second)
+	defer cancel()
 
-func (c *Client) Ping(ctx context.Context) error {
-	return c.Client.Ping(ctx).Err()
+	if err := rdb.Ping(pingCtx).Err(); err != nil {
+		return nil, err
+	}
+
+	return rdb, nil
 }
