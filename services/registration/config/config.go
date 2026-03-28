@@ -6,24 +6,39 @@ import (
 )
 
 type Config struct {
-	AuthURL  string
-	RedisURL string
+	RedisAddr        string
+	RegistrationPort string
+	RedisPassword    string
+	RedisDB          int
 }
 
 func LoadConfig(ctx context.Context) (*Config, error) {
-	authURL, err := config.MustGet(ctx, "AUTH_URL")
+
+	redisAddr, err := config.MustGet(ctx, "REDIS_ADDR")
 	if err != nil {
 		return nil, err
 	}
 
-	redisURL, err := config.MustGet(ctx, "REDIS_URL")
+	registrationPort, err := config.MustGet(ctx, "REGISTRATION_PORT")
+	if err != nil {
+		return nil, err
+	}
+
+	redisPassword, err := config.MustGet(ctx, "REDIS_PASSWORD")
+	if err != nil {
+		return nil, err
+	}
+
+	redisDB, err := config.GetInt(ctx, "REDIS_DB")
 	if err != nil {
 		return nil, err
 	}
 
 	return &Config{
-		AuthURL:  authURL,
-		RedisURL: redisURL,
+		RedisAddr:        redisAddr,
+		RegistrationPort: registrationPort,
+		RedisPassword:    redisPassword,
+		RedisDB:          redisDB,
 	}, nil
 }
 
