@@ -32,7 +32,8 @@ func (s *RegistrationService) Register(ctx context.Context, req RegisterInput) (
 	registrationID := uuid.NewString()
 
 	// 2. генерим код
-	code := generateCode()
+	//code := generateCode()
+	code := "1234"
 
 	// 3. хешируем пароль
 	hash, err := security.HashPassword(req.Password)
