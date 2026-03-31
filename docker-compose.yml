@@ -23,13 +23,17 @@ services:
     image: redis:7
     container_name: redis
     
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --databases 16 
     ports:
       - "6379:6379"
     healthcheck:
-    test: ["CMD", "redis-cli", "ping"]
-    interval: 5s
-    timeout: 3s
-    retries: 5
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   migrate:
     build:
