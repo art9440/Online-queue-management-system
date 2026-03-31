@@ -1,14 +1,12 @@
 package redisclient
 
 import (
+	"Online-queue-management-system/services/registration/config"
 	"context"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
-
-type Client struct {
-	*redis.Client
-}
 
 func New(ctx context.Context, cfg config.Config, timeout time.Duration) (*redis.Client, error) {
 	rdb := redis.NewClient(&redis.Options{
