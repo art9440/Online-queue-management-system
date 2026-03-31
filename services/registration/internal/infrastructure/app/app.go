@@ -4,6 +4,7 @@ import (
 	"Online-queue-management-system/libs/logger"
 	"Online-queue-management-system/libs/redisclient"
 	"Online-queue-management-system/services/registration/config"
+	"Online-queue-management-system/services/registration/internal/application/email"
 	"Online-queue-management-system/services/registration/internal/application/service"
 	httpserver "Online-queue-management-system/services/registration/internal/infrastructure/httpServer"
 	"Online-queue-management-system/services/registration/internal/infrastructure/repos"
@@ -34,8 +35,8 @@ func NewApp(ctx context.Context, cfg config.Config, dbCfg config.DBConfig) (*App
 		log.Error("error creating registration repo", "err", err)
 		return nil, err
 	}
-
-	svc := service.NewRegistrationService(repoRedis, repoPostgres)
+	emailSender := email.NewEmailSender(cfg)
+	svc := service.NewRegistrationService(repoRedis, repoPostgres, emailSender)
 
 	serverImpl := httpserver.NewHttpServer(svc)
 	mux := http.NewServeMux()
@@ -47,7 +48,6 @@ func NewApp(ctx context.Context, cfg config.Config, dbCfg config.DBConfig) (*App
 	})
 	//для теста
 	mux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("PING HIT")
 		w.Write([]byte("pong"))
 	})
 

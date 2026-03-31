@@ -19,7 +19,6 @@ func NewHttpServer(svc *service.RegistrationService) *HttpServer {
 
 func (h *HttpServer) Register(w http.ResponseWriter, r *http.Request) {
 	var req dto.RegisterRequest
-	fmt.Println("REGISTER HIT")
 	ctx := r.Context()
 	log := logger.From(ctx)
 

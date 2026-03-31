@@ -10,6 +10,10 @@ type Config struct {
 	RegistrationPort string
 	RedisPassword    string
 	RedisDB          int
+	SMTPHost         string
+	SMTPPort         string
+	SMTPUser         string
+	SMTPPass         string
 }
 
 func LoadConfig(ctx context.Context) (*Config, error) {
@@ -34,11 +38,35 @@ func LoadConfig(ctx context.Context) (*Config, error) {
 		return nil, err
 	}
 
+	smtpHost, err := config.MustGet(ctx, "SMTP_HOST")
+	if err != nil {
+		return nil, err
+	}
+
+	smtpPort, err := config.MustGet(ctx, "SMTP_PORT")
+	if err != nil {
+		return nil, err
+	}
+
+	smtpUser, err := config.MustGet(ctx, "SMTP_USER")
+	if err != nil {
+		return nil, err
+	}
+
+	smtpPass, err := config.MustGet(ctx, "SMTP_PASS")
+	if err != nil {
+		return nil, err
+	}
+
 	return &Config{
 		RedisAddr:        redisAddr,
 		RegistrationPort: registrationPort,
 		RedisPassword:    redisPassword,
 		RedisDB:          redisDB,
+		SMTPHost:         smtpHost,
+		SMTPPort:         smtpPort,
+		SMTPUser:         smtpUser,
+		SMTPPass:         smtpPass,
 	}, nil
 }
 
