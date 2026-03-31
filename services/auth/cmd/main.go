@@ -22,6 +22,7 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	ctx = logger.With(ctx, log)
 
 	a, err := app.New(ctx)
 	if err != nil {

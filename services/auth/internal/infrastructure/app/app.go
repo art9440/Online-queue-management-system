@@ -1,8 +1,10 @@
 package app
 
 import (
+	"Online-queue-management-system/libs/logger"
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -23,18 +25,23 @@ type App struct {
 }
 
 func New(ctx context.Context) (*App, error) {
+	log := logger.From(ctx)
+
 	cfg, err := config.Load()
 	if err != nil {
+		log.Error("failed to load auth config", "err", err)
 		return nil, err
 	}
 
 	db, err := newPostgres(ctx, cfg)
 	if err != nil {
+		log.Error("failed to connect postgres", "err", err)
 		return nil, err
 	}
 
 	rdb, err := newRedis(ctx, cfg)
 	if err != nil {
+		log.Error("failed to connect redis", "err", err)
 		db.Close()
 		return nil, err
 	}
@@ -61,7 +68,10 @@ func New(ctx context.Context) (*App, error) {
 
 	server := &http.Server{
 		Addr:              ":" + cfg.AuthPort,
-		Handler:           mux,
+		Handler:           httpapi.RequestLogger(mux),
+		BaseContext: func(_ net.Listener) context.Context {
+			return ctx
+		},
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
@@ -73,20 +83,29 @@ func New(ctx context.Context) (*App, error) {
 }
 
 func (a *App) Run(ctx context.Context) error {
+	log := logger.From(ctx)
 	errCh := make(chan error, 1)
 
 	go func() {
+		log.Info("starting auth service", "addr", a.server.Addr)
 		err := a.server.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
+			log.Error("auth server stopped with error", "err", err)
 			errCh <- err
 		}
 	}()
 
 	select {
 	case <-ctx.Done():
+		log.Info("shutdown signal received")
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		return a.server.Shutdown(shutdownCtx)
+		if err := a.server.Shutdown(shutdownCtx); err != nil {
+			log.Error("failed to shutdown auth server", "err", err)
+			return err
+		}
+		log.Info("auth service stopped")
+		return nil
 	case err := <-errCh:
 		return err
 	}
