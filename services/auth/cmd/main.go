@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Online-queue-management-system/libs/logger"
 	"context"
 	"log/slog"
 	"os"
