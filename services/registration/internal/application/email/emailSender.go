@@ -5,50 +5,51 @@ import (
 	"Online-queue-management-system/services/registration/config"
 	"context"
 	"fmt"
-	"net/smtp"
+
+	"github.com/go-mail/mail/v2" // <-- новый импорт
 )
 
 type EmailSender struct {
-	host     string
-	port     string
-	user     string
-	password string
+	dialer *mail.Dialer
+	from   string
 }
 
 func NewEmailSender(cfg config.Config) *EmailSender {
+	// Создаём dialer — API почти такой же
+	dialer := mail.NewDialer(cfg.SMTPHost, 587, cfg.SMTPUser, cfg.SMTPPass)
+
 	return &EmailSender{
-		host:     cfg.SMTPHost,
-		port:     cfg.SMTPPort,
-		user:     cfg.SMTPUser,
-		password: cfg.SMTPPass,
+		dialer: dialer,
+		from:   cfg.SMTPUser,
 	}
 }
 
 func (e *EmailSender) SendEmail(ctx context.Context, msg EmailMessage) error {
 	log := logger.From(ctx)
-	addr := fmt.Sprintf("%s:%s", e.host, e.port)
-	log.Info("smtp addr", "addr", addr)
-	auth := smtp.PlainAuth("", e.user, e.password, e.host)
-	contentType := "text/plain"
 
-	headers := make(map[string]string)
-	headers["From"] = e.user
-	headers["To"] = msg.To
-	headers["Subject"] = msg.Subject
-	headers["MIME-Version"] = "1.0"
-	headers["Content-Type"] = fmt.Sprintf("%s; charset=\"utf-8\"", contentType)
+	// Создаём письмо — API полностью совместим
+	m := mail.NewMessage()
+	m.SetHeader("From", e.from)
+	m.SetHeader("To", msg.To)
+	m.SetHeader("Subject", msg.Subject)
 
-	message := ""
-	for k, v := range headers {
-		message += fmt.Sprintf("%s: %s\r\n", k, v)
+	// HTML-письмо
+	body := fmt.Sprintf(`
+		<h2>Подтверждение регистрации</h2>
+		<p>Ваш код подтверждения:</p>
+		<h1 style="font-size: 32px; letter-spacing: 5px;">%s</h1>
+		<p>Введите этот код для завершения регистрации.</p>
+	`, msg.Body)
+	m.SetBody("text/html", body)
+
+	// Отправляем
+	log.Info("отправка письма", "to", msg.To)
+
+	if err := e.dialer.DialAndSend(m); err != nil {
+		log.Error("ошибка отправки", "error", err)
+		return fmt.Errorf("не удалось отправить письмо: %w", err)
 	}
-	message += "\r\n" + msg.Body
 
-	err := smtp.SendMail(addr, auth, e.user, []string{msg.To}, []byte(message))
-	if err != nil {
-		return fmt.Errorf("failed to send email: %w", err)
-	}
-	log.Info("email send succesfully")
-
+	log.Info("письмо успешно отправлено")
 	return nil
 }
