@@ -5,6 +5,7 @@ import (
 	"Online-queue-management-system/libs/redisclient"
 	"Online-queue-management-system/services/registration/config"
 	"Online-queue-management-system/services/registration/internal/application/email"
+	"Online-queue-management-system/services/registration/internal/application/queue"
 	"Online-queue-management-system/services/registration/internal/application/service"
 	httpserver "Online-queue-management-system/services/registration/internal/infrastructure/httpServer"
 	"Online-queue-management-system/services/registration/internal/infrastructure/repos"
@@ -18,6 +19,7 @@ import (
 type App struct {
 	svc        *service.RegistrationService
 	httpServer *http.Server
+	emailQueue *queue.EmailQueue
 }
 
 func NewApp(ctx context.Context, cfg config.Config, dbCfg config.DBConfig) (*App, error) {
@@ -36,7 +38,8 @@ func NewApp(ctx context.Context, cfg config.Config, dbCfg config.DBConfig) (*App
 		return nil, err
 	}
 	emailSender := email.NewEmailSender(cfg)
-	svc := service.NewRegistrationService(repoRedis, repoPostgres, emailSender)
+	emailQueue := queue.NewEmailQueue(emailSender, 10)
+	svc := service.NewRegistrationService(repoRedis, repoPostgres, emailQueue)
 
 	serverImpl := httpserver.NewHttpServer(svc)
 	mux := http.NewServeMux()
@@ -56,7 +59,9 @@ func NewApp(ctx context.Context, cfg config.Config, dbCfg config.DBConfig) (*App
 		Handler: mux,
 	}
 
-	return &App{svc: svc, httpServer: httpServer}, nil
+	return &App{svc: svc,
+		httpServer: httpServer,
+		emailQueue: emailQueue}, nil
 }
 
 func (a *App) Run(ctx context.Context) error {
@@ -102,6 +107,15 @@ func (a *App) Run(ctx context.Context) error {
 		log.Error("failed to shutdown http server", "err", err)
 		return fmt.Errorf("shutdown failed: %w", err)
 	}
+	log.Info("http server stopped")
+
+	log.Info("shutting down email queue", "pending_emails", func() int {
+		len, _, _ := a.emailQueue.GetStats()
+		return len
+	}())
+
+	a.emailQueue.Shutdown()
+	log.Info("email queue stopped")
 
 	log.Info("registration service stopped")
 	return nil

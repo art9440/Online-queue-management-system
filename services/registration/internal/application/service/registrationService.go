@@ -3,6 +3,7 @@ package service
 import (
 	"Online-queue-management-system/libs/logger"
 	"Online-queue-management-system/services/registration/internal/application/email"
+	"Online-queue-management-system/services/registration/internal/application/queue"
 	"Online-queue-management-system/services/registration/internal/domain/pending"
 	"Online-queue-management-system/services/registration/internal/infrastructure/security"
 	"context"
@@ -16,14 +17,14 @@ import (
 type RegistrationService struct {
 	repoRedis    PendingRepo
 	repoPostgres UserRepo
-	emailSender  Sender
+	emailQueue   *queue.EmailQueue
 }
 
-func NewRegistrationService(repoRedis PendingRepo, repoPostgres UserRepo, emailSender Sender) *RegistrationService {
+func NewRegistrationService(repoRedis PendingRepo, repoPostgres UserRepo, queue *queue.EmailQueue) *RegistrationService {
 	return &RegistrationService{
 		repoRedis:    repoRedis,
 		repoPostgres: repoPostgres,
-		emailSender:  emailSender,
+		emailQueue:   queue,
 	}
 }
 
@@ -61,17 +62,13 @@ func (s *RegistrationService) Register(ctx context.Context, req RegisterInput) (
 	}
 	log.Info("pending registration saved", "registrationID", pending.ID)
 
-	msg := email.EmailMessage{
-		To:      req.Email,
-		Subject: "Код подтверждения для входа в Online Queue",
-		Body:    code,
-	}
 	// 6. отправляем email
-	if err := s.emailSender.SendEmail(ctx, msg); err != nil {
-		return RegisterOutput{}, fmt.Errorf("failed to send verification email: %w", err)
-	}
+	s.emailQueue.Enqueue(email.EmailMessage{
+		To:      req.Email,
+		Subject: "Код подтверждения",
+		Body:    code,
+	})
 
-	// 7. возвращаем ID
 	return RegisterOutput{
 		Status:         "pending",
 		RegistrationID: registrationID,

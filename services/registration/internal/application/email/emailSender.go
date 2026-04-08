@@ -35,11 +35,11 @@ func (e *EmailSender) SendEmail(ctx context.Context, msg EmailMessage) error {
 
 	// HTML-письмо
 	body := fmt.Sprintf(`
-		<h2>Подтверждение регистрации</h2>
-		<p>Ваш код подтверждения:</p>
-		<h1 style="font-size: 32px; letter-spacing: 5px;">%s</h1>
-		<p>Введите этот код для завершения регистрации.</p>
-	`, msg.Body)
+			<h2>Подтверждение регистрации</h2>
+			<p>Ваш код подтверждения:</p>
+			<h1 style="font-size: 32px; letter-spacing: 5px;">%s</h1>
+			<p>Введите этот код для завершения регистрации.</p>
+		`, msg.Body)
 	m.SetBody("text/html", body)
 
 	// Отправляем
