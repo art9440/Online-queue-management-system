@@ -32,6 +32,15 @@ func (s *RegistrationService) Register(ctx context.Context, req RegisterInput) (
 
 	log := logger.From(ctx)
 	log.Info("starting registration process for email", "email", req.Email)
+
+	if exists, err := s.repoPostgres.GetUserByEmail(ctx, req.Email); err != nil {
+		log.Error("error checking existing user", "email", req.Email, "err", err)
+		return RegisterOutput{}, fmt.Errorf("error checking existing user: %w", err)
+	} else if exists {
+		log.Warn("user with email already exists", "email", req.Email)
+		return RegisterOutput{}, errors.New("user with this email already exists")
+	}
+
 	// 1. генерим ID
 	registrationID := uuid.NewString()
 
@@ -87,6 +96,14 @@ func (s *RegistrationService) Verify(ctx context.Context, req VerifyInput) error
 	if err != nil {
 		log.Error("failed to get pending registration from Redis", "registrationID", req.RegistrationID, "err", err)
 		return err
+	}
+
+	if exists, err := s.repoPostgres.GetUserByEmail(ctx, pending.Email); err != nil {
+		log.Error("error checking existing user", "email", pending.Email, "err", err)
+		return fmt.Errorf("error checking existing user: %w", err)
+	} else if exists {
+		log.Warn("user with email already exists", "email", pending.Email)
+		return errors.New("user with this email already exists")
 	}
 
 	// 2. проверить код

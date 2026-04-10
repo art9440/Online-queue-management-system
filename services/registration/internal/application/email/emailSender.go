@@ -15,7 +15,6 @@ type EmailSender struct {
 }
 
 func NewEmailSender(cfg config.Config) *EmailSender {
-	// Создаём dialer — API почти такой же
 	dialer := mail.NewDialer(cfg.SMTPHost, 587, cfg.SMTPUser, cfg.SMTPPass)
 
 	return &EmailSender{
@@ -43,13 +42,13 @@ func (e *EmailSender) SendEmail(ctx context.Context, msg EmailMessage) error {
 	m.SetBody("text/html", body)
 
 	// Отправляем
-	log.Info("отправка письма", "to", msg.To)
+	log.Info("sending email", "to", msg.To)
 
 	if err := e.dialer.DialAndSend(m); err != nil {
-		log.Error("ошибка отправки", "error", err)
-		return fmt.Errorf("не удалось отправить письмо: %w", err)
+		log.Error("error sending email", "error", err)
+		return fmt.Errorf("failed to send email: %w", err)
 	}
 
-	log.Info("письмо успешно отправлено")
+	log.Info("email sent successfully")
 	return nil
 }
