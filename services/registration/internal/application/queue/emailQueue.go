@@ -1,4 +1,3 @@
-// internal/application/queue/email_queue.go
 package queue
 
 import (
