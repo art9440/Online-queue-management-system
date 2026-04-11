@@ -128,3 +128,22 @@ func (s *RegistrationService) Verify(ctx context.Context, req VerifyInput) error
 
 	return nil
 }
+
+func (s *RegistrationService) ResendCode(ctx context.Context, req ResendInput) error {
+	log := logger.From(ctx)
+	log.Info("resending verification code", "registrationID", req.RegistrationID)
+	// 1. достать из Redis
+	pending, err := s.repoRedis.Get(ctx, req.RegistrationID)
+	if err != nil {
+		log.Error("failed to get pending registration from Redis", "registrationID", req.RegistrationID, "err", err)
+		return err
+	}
+
+	s.emailQueue.Enqueue(email.EmailMessage{
+		To:      pending.Email,
+		Subject: "Код подтверждения",
+		Body:    pending.Code,
+	})
+
+	return nil
+}

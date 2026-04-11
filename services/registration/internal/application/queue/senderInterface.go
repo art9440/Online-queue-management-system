@@ -1,4 +1,4 @@
-package service
+package queue
 
 import (
 	"Online-queue-management-system/services/registration/internal/application/email"

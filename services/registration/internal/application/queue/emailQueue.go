@@ -11,14 +11,14 @@ import (
 type EmailQueue struct {
 	queue   chan email.EmailMessage
 	workers int
-	sender  *email.EmailSender
+	sender  Sender
 	wg      sync.WaitGroup
 	closeCh chan struct{}
 	ctx     context.Context
 	cancel  context.CancelFunc
 }
 
-func NewEmailQueue(sender *email.EmailSender, workers int) *EmailQueue {
+func NewEmailQueue(sender Sender, workers int) *EmailQueue {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	eq := &EmailQueue{
@@ -68,7 +68,7 @@ func (eq *EmailQueue) worker(workerID int) {
 	log.Info("email queue worker started", "worker_id", workerID)
 
 	// Rate limiting для Gmail (10 писем в секунду)
-	limiter := time.NewTicker(100 * time.Millisecond)
+	limiter := time.NewTicker(1 * time.Second)
 	defer limiter.Stop()
 
 	// Метрики для воркера

@@ -38,13 +38,14 @@ func NewApp(ctx context.Context, cfg config.Config, dbCfg config.DBConfig) (*App
 		return nil, err
 	}
 	emailSender := email.NewEmailSender(cfg)
-	emailQueue := queue.NewEmailQueue(emailSender, 10)
+	emailQueue := queue.NewEmailQueue(emailSender, 1)
 	svc := service.NewRegistrationService(repoRedis, repoPostgres, emailQueue)
 
 	serverImpl := httpserver.NewHttpServer(svc)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/register", httpserver.RecoverMiddleware(serverImpl.Register))
 	mux.HandleFunc("/verify", httpserver.RecoverMiddleware(serverImpl.Verify))
+	mux.HandleFunc("/resend", httpserver.RecoverMiddleware(serverImpl.ResendCode))
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
