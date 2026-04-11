@@ -13,4 +13,5 @@ type PendingRepo interface {
 
 type UserRepo interface {
 	CreateUserWithBusiness(ctx context.Context, p pending.PendingRegistration) error
+	GetUserByEmail(ctx context.Context, email string) (bool, error)
 }

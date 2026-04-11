@@ -65,3 +65,14 @@ func (r *RegistrationRepoPostgres) CreateUserWithBusiness(ctx context.Context, p
 
 	return tx.Commit()
 }
+
+func (r *RegistrationRepoPostgres) GetUserByEmail(ctx context.Context, email string) (bool, error) {
+	var exists bool
+	err := r.db.QueryRowContext(ctx, `
+		SELECT EXISTS(SELECT 1 FROM users WHERE login = $1)
+	`, email).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("check user: %w", err)
+	}
+	return exists, nil
+}

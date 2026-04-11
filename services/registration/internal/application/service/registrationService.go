@@ -2,6 +2,8 @@ package service
 
 import (
 	"Online-queue-management-system/libs/logger"
+	"Online-queue-management-system/services/registration/internal/application/email"
+	"Online-queue-management-system/services/registration/internal/application/queue"
 	"Online-queue-management-system/services/registration/internal/domain/pending"
 	"Online-queue-management-system/services/registration/internal/infrastructure/security"
 	"context"
@@ -15,12 +17,14 @@ import (
 type RegistrationService struct {
 	repoRedis    PendingRepo
 	repoPostgres UserRepo
+	emailQueue   *queue.EmailQueue
 }
 
-func NewRegistrationService(repoRedis PendingRepo, repoPostgres UserRepo) *RegistrationService {
+func NewRegistrationService(repoRedis PendingRepo, repoPostgres UserRepo, queue *queue.EmailQueue) *RegistrationService {
 	return &RegistrationService{
 		repoRedis:    repoRedis,
 		repoPostgres: repoPostgres,
+		emailQueue:   queue,
 	}
 }
 
@@ -28,12 +32,20 @@ func (s *RegistrationService) Register(ctx context.Context, req RegisterInput) (
 
 	log := logger.From(ctx)
 	log.Info("starting registration process for email", "email", req.Email)
+
+	if exists, err := s.repoPostgres.GetUserByEmail(ctx, req.Email); err != nil {
+		log.Error("error checking existing user", "email", req.Email, "err", err)
+		return RegisterOutput{}, fmt.Errorf("error checking existing user: %w", err)
+	} else if exists {
+		log.Warn("user with email already exists", "email", req.Email)
+		return RegisterOutput{}, errors.New("user with this email already exists")
+	}
+
 	// 1. генерим ID
 	registrationID := uuid.NewString()
 
 	// 2. генерим код
-	//code := generateCode()
-	code := "1234"
+	code := generateCode()
 
 	// 3. хешируем пароль
 	hash, err := security.HashPassword(req.Password)
@@ -59,10 +71,13 @@ func (s *RegistrationService) Register(ctx context.Context, req RegisterInput) (
 	}
 	log.Info("pending registration saved", "registrationID", pending.ID)
 
-	// 6. отправляем email (потом)
-	// email.Send(code)
+	// 6. отправляем email
+	s.emailQueue.Enqueue(email.EmailMessage{
+		To:      req.Email,
+		Subject: "Код подтверждения",
+		Body:    code,
+	})
 
-	// 7. возвращаем ID
 	return RegisterOutput{
 		Status:         "pending",
 		RegistrationID: registrationID,
@@ -81,6 +96,14 @@ func (s *RegistrationService) Verify(ctx context.Context, req VerifyInput) error
 	if err != nil {
 		log.Error("failed to get pending registration from Redis", "registrationID", req.RegistrationID, "err", err)
 		return err
+	}
+
+	if exists, err := s.repoPostgres.GetUserByEmail(ctx, pending.Email); err != nil {
+		log.Error("error checking existing user", "email", pending.Email, "err", err)
+		return fmt.Errorf("error checking existing user: %w", err)
+	} else if exists {
+		log.Warn("user with email already exists", "email", pending.Email)
+		return errors.New("user with this email already exists")
 	}
 
 	// 2. проверить код
