@@ -78,6 +78,22 @@ func GetDuration(ctx context.Context, key string) (time.Duration, error) {
 	return d, nil
 }
 
+func GetDurationDefault(ctx context.Context, key string, defaultVal time.Duration) time.Duration {
+	log := logger.From(ctx)
+	val := os.Getenv(key)
+	if val == "" {
+		return defaultVal
+	}
+
+	d, err := time.ParseDuration(val)
+	if err != nil {
+		log.Error("env %s must be int, got %s", key, val)
+		return defaultVal
+	}
+
+	return d
+}
+
 func GetBool(ctx context.Context, key string, defaultVal bool) (bool, error) {
 	log := logger.From(ctx)
 	val := os.Getenv(key)
