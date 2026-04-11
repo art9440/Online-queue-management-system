@@ -5,9 +5,8 @@ import (
 	"Online-queue-management-system/services/registration/config"
 	"context"
 	"fmt"
-	"time"
 
-	"github.com/go-mail/mail/v2" // <-- новый импорт
+	"github.com/go-mail/mail/v2"
 )
 
 type EmailSender struct {
@@ -15,10 +14,10 @@ type EmailSender struct {
 	from   string
 }
 
-func NewEmailSender(cfg config.Config) *EmailSender {
-	dialer := mail.NewDialer(cfg.SMTPHost, 587, cfg.SMTPUser, cfg.SMTPPass)
+func NewEmailSender(cfg config.EmailSenderConfig) *EmailSender {
+	dialer := mail.NewDialer(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPass)
 	dialer.StartTLSPolicy = mail.MandatoryStartTLS
-	dialer.Timeout = 10 * time.Second
+	dialer.Timeout = cfg.SendTimeOut
 
 	return &EmailSender{
 		dialer: dialer,

@@ -2,6 +2,7 @@ package queue
 
 import (
 	"Online-queue-management-system/libs/logger"
+	"Online-queue-management-system/services/registration/config"
 	"Online-queue-management-system/services/registration/internal/application/email"
 	"context"
 	"sync"
@@ -9,29 +10,33 @@ import (
 )
 
 type EmailQueue struct {
-	queue   chan email.EmailMessage
-	workers int
-	sender  Sender
-	wg      sync.WaitGroup
-	closeCh chan struct{}
-	ctx     context.Context
-	cancel  context.CancelFunc
+	queue     chan email.EmailMessage
+	workers   int
+	sender    Sender
+	wg        sync.WaitGroup
+	closeCh   chan struct{}
+	ctx       context.Context
+	cancel    context.CancelFunc
+	rateLimit time.Duration
+	timeOut   time.Duration
 }
 
-func NewEmailQueue(sender Sender, workers int) *EmailQueue {
+func NewEmailQueue(sender Sender, cfg config.QueueConfig) *EmailQueue {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	eq := &EmailQueue{
-		queue:   make(chan email.EmailMessage, 10000),
-		workers: workers,
-		sender:  sender,
-		closeCh: make(chan struct{}),
-		ctx:     ctx,
-		cancel:  cancel,
+		queue:     make(chan email.EmailMessage, 10000),
+		workers:   cfg.NumWorkers,
+		sender:    sender,
+		closeCh:   make(chan struct{}),
+		ctx:       ctx,
+		cancel:    cancel,
+		rateLimit: cfg.RateLimit,
+		timeOut:   cfg.WrkTimeOut,
 	}
 
 	// Запускаем воркеров
-	for i := range workers {
+	for i := range cfg.NumWorkers {
 		eq.wg.Add(1)
 		go eq.worker(i)
 	}
@@ -67,8 +72,8 @@ func (eq *EmailQueue) worker(workerID int) {
 
 	log.Info("email queue worker started", "worker_id", workerID)
 
-	// Rate limiting для Gmail (10 писем в секунду)
-	limiter := time.NewTicker(1 * time.Second)
+	// Rate limiting для Gmail
+	limiter := time.NewTicker(eq.rateLimit)
 	defer limiter.Stop()
 
 	// Метрики для воркера
@@ -88,7 +93,7 @@ func (eq *EmailQueue) worker(workerID int) {
 				"processed", processedCount)
 
 			// Создаем контекст с таймаутом для отправки конкретного письма
-			sendCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+			sendCtx, cancel := context.WithTimeout(ctx, eq.timeOut)
 
 			startTime := time.Now()
 			err := eq.sender.SendEmail(sendCtx, msg)

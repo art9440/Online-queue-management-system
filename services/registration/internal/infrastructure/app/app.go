@@ -24,7 +24,7 @@ type App struct {
 
 func NewApp(ctx context.Context, cfg config.Config, dbCfg config.DBConfig) (*App, error) {
 	log := logger.From(ctx)
-	redisClient, err := redisclient.New(ctx, cfg, 5*time.Second)
+	redisClient, err := redisclient.New(ctx, cfg.RedisCfg, 5*time.Second)
 
 	if err := waitForRedis(ctx, redisClient); err != nil {
 		log.Error("redis not ready", "err", err)
@@ -37,8 +37,8 @@ func NewApp(ctx context.Context, cfg config.Config, dbCfg config.DBConfig) (*App
 		log.Error("error creating registration repo", "err", err)
 		return nil, err
 	}
-	emailSender := email.NewEmailSender(cfg)
-	emailQueue := queue.NewEmailQueue(emailSender, 1)
+	emailSender := email.NewEmailSender(cfg.EmailSenderCfg)
+	emailQueue := queue.NewEmailQueue(emailSender, cfg.QueueCfg)
 	svc := service.NewRegistrationService(repoRedis, repoPostgres, emailQueue)
 
 	serverImpl := httpserver.NewHttpServer(svc)
@@ -56,7 +56,7 @@ func NewApp(ctx context.Context, cfg config.Config, dbCfg config.DBConfig) (*App
 	})
 
 	httpServer := &http.Server{
-		Addr:    ":" + cfg.RegistrationPort,
+		Addr:    ":" + cfg.RegCfg.RegistrationPort,
 		Handler: mux,
 	}
 

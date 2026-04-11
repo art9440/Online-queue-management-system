@@ -138,7 +138,7 @@ func (s *RegistrationService) ResendCode(ctx context.Context, req ResendInput) e
 		log.Error("failed to get pending registration from Redis", "registrationID", req.RegistrationID, "err", err)
 		return err
 	}
-
+	//2. Повторная отправка кода на почту
 	s.emailQueue.Enqueue(email.EmailMessage{
 		To:      pending.Email,
 		Subject: "Код подтверждения",
