@@ -144,12 +144,6 @@ func (s *RegistrationService) Verify(ctx context.Context, req VerifyInput) error
 		return fmt.Errorf("failed after retries: %w", errRet)
 	}
 
-	// 3. сохранить в Postgres
-	err = s.repoPostgres.CreateUserWithBusiness(ctx, pending)
-	if err != nil {
-		log.Error("failed to create user with business in Postgres", "err", err)
-		return err
-	}
 	log.Info("business_admin account is registered")
 
 	// 4. удалить из Redis
