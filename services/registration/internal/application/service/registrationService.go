@@ -7,6 +7,8 @@ import (
 	"Online-queue-management-system/services/registration/internal/domain/pending"
 	"Online-queue-management-system/services/registration/internal/infrastructure/security"
 	"context"
+	crypto "crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -112,12 +114,20 @@ func (s *RegistrationService) Verify(ctx context.Context, req VerifyInput) error
 		return errors.New("invalid code")
 	}
 
+	slug, err := generateSlug()
+	if err != nil {
+		log.Error("failed to generate slug", "err", err, "bussiness_name", pending.BusinessName)
+	}
+	log.Info("slug generated succesfully", "slug", slug)
+	pending.ClientLink = &slug
+
 	// 3. сохранить в Postgres
 	err = s.repoPostgres.CreateUserWithBusiness(ctx, pending)
 	if err != nil {
 		log.Error("failed to create user with business in Postgres", "err", err)
 		return err
 	}
+	log.Info("bussiness_admin account is registered")
 
 	// 4. удалить из Redis
 	err = s.repoRedis.Delete(ctx, req.RegistrationID)
@@ -127,6 +137,17 @@ func (s *RegistrationService) Verify(ctx context.Context, req VerifyInput) error
 	}
 
 	return nil
+}
+
+func generateSlug() (string, error) {
+	b := make([]byte, 6)
+
+	_, err := crypto.Read(b)
+	if err != nil {
+		return "", err
+	}
+
+	return base64.URLEncoding.EncodeToString(b), nil
 }
 
 func (s *RegistrationService) ResendCode(ctx context.Context, req ResendInput) error {
