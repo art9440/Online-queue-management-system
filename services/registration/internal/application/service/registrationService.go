@@ -7,11 +7,14 @@ import (
 	"Online-queue-management-system/services/registration/internal/domain/pending"
 	"Online-queue-management-system/services/registration/internal/infrastructure/security"
 	"context"
+	crypto "crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"math/rand"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type RegistrationService struct {
@@ -98,35 +101,74 @@ func (s *RegistrationService) Verify(ctx context.Context, req VerifyInput) error
 		return err
 	}
 
-	if exists, err := s.repoPostgres.GetUserByEmail(ctx, pending.Email); err != nil {
-		log.Error("error checking existing user", "email", pending.Email, "err", err)
-		return fmt.Errorf("error checking existing user: %w", err)
-	} else if exists {
-		log.Warn("user with email already exists", "email", pending.Email)
-		return errors.New("user with this email already exists")
-	}
-
 	// 2. проверить код
 	if pending.Code != req.Code {
 		log.Warn("invalid verification code", "registrationID", req.RegistrationID)
 		return errors.New("invalid code")
 	}
 
-	// 3. сохранить в Postgres
-	err = s.repoPostgres.CreateUserWithBusiness(ctx, pending)
-	if err != nil {
-		log.Error("failed to create user with business in Postgres", "err", err)
-		return err
+	const maxRetries = 3
+
+	var errRet error
+	var slug string
+	for i := range maxRetries {
+		slug, errRet = generateSlug()
+		if errRet != nil {
+			return errRet
+		}
+
+		pending.ClientSlug = &slug
+
+		errRet = s.repoPostgres.CreateUserWithBusiness(ctx, pending)
+		if errRet == nil {
+			break // успех
+		}
+
+		if isUniqueViolation(errRet, "businesses_registration_slug_uindex") {
+			log.Warn("slug collision, retrying", "attempt", i+1)
+			continue
+		}
+
+		if isUniqueViolation(errRet, "users_login_key") {
+			log.Warn("email already exists", "email", pending.Email)
+			return errors.New("user with this email already exists")
+		}
+
+		return errRet
 	}
+
+	if errRet != nil {
+		return fmt.Errorf("failed after retries: %w", errRet)
+	}
+
+	log.Info("business_admin account is registered")
 
 	// 4. удалить из Redis
 	err = s.repoRedis.Delete(ctx, req.RegistrationID)
 	if err != nil {
-		log.Error("failed to delete pending registration from Redis", "registrationID", req.RegistrationID, "err", err)
-		return err
+		log.Warn("failed to delete pending registration from Redis", "registrationID", req.RegistrationID, "err", err)
 	}
 
 	return nil
+}
+
+func generateSlug() (string, error) {
+	b := make([]byte, 6)
+
+	_, err := crypto.Read(b)
+	if err != nil {
+		return "", err
+	}
+
+	return base64.URLEncoding.EncodeToString(b), nil
+}
+
+func isUniqueViolation(err error, constraint string) bool {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == "23505" && pgErr.ConstraintName == constraint
+	}
+	return false
 }
 
 func (s *RegistrationService) ResendCode(ctx context.Context, req ResendInput) error {
