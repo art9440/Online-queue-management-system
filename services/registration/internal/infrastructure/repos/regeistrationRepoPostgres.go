@@ -76,3 +76,21 @@ func (r *RegistrationRepoPostgres) GetUserByEmail(ctx context.Context, email str
 	}
 	return exists, nil
 }
+
+func (r *RegistrationRepoPostgres) UpdatePasswordByEmail(ctx context.Context, email string, passwordHash string) (bool, error) {
+	result, err := r.db.ExecContext(ctx, `
+		UPDATE users
+		SET password_hash = $1
+		WHERE login = $2
+	`, passwordHash, email)
+	if err != nil {
+		return false, fmt.Errorf("update password: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("rows affected: %w", err)
+	}
+
+	return rowsAffected > 0, nil
+}

@@ -20,3 +20,17 @@ type VerifyInput struct {
 type ResendInput struct {
 	RegistrationID string
 }
+
+type PasswordRecoveryInput struct {
+	Email string
+}
+
+type PasswordRecoveryOutput struct {
+	Status     string
+	RecoveryID string
+}
+
+type PasswordRecoveryVerifyInput struct {
+	RecoveryID string
+	Code       string
+}
