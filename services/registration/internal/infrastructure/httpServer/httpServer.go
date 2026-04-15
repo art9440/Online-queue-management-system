@@ -47,6 +47,29 @@ func (h *HttpServer) Register(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *HttpServer) ResendCode(w http.ResponseWriter, r *http.Request) {
+	var req dto.ResendCodeRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+
+	input := service.ResendInput{
+		RegistrationID: req.RegistrationID,
+	}
+
+	err := h.svc.ResendCode(r.Context(), input)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, dto.Response{
+		Status: "resended",
+	})
+}
+
 func (h *HttpServer) Verify(w http.ResponseWriter, r *http.Request) {
 	var req dto.VerifyRequest
 

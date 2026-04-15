@@ -16,3 +16,7 @@ type VerifyInput struct {
 	RegistrationID string
 	Code           string
 }
+
+type ResendInput struct {
+	RegistrationID string
+}

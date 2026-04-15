@@ -11,3 +11,7 @@ type VerifyRequest struct {
 	RegistrationID string `json:"registration_id"`
 	Code           string `json:"code"`
 }
+
+type ResendCodeRequest struct {
+	RegistrationID string `json:"registration_id"`
+}
