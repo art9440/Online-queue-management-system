@@ -40,7 +40,7 @@ func (r *RegistrationRepoPostgres) CreateUserWithBusiness(ctx context.Context, p
 		INSERT INTO businesses (name, type, registration_slug)
 		VALUES ($1, $2, $3)
 		RETURNING id
-	`, p.BusinessName, p.BusinessType, p.ClientLink).Scan(&businessID)
+	`, p.BusinessName, p.BusinessType, p.ClientSlug).Scan(&businessID)
 	if err != nil {
 		return fmt.Errorf("insert business: %w", err)
 	}

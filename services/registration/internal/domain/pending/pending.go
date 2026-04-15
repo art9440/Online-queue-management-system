@@ -7,5 +7,5 @@ type PendingRegistration struct {
 	BusinessName string  `json:"business_name"`
 	BusinessType string  `json:"business_type"`
 	Code         string  `json:"code"`
-	ClientLink   *string `json:"client_link,omitempty"`
+	ClientSlug   *string `json:"client_slug,omitempty"`
 }

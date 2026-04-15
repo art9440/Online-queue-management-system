@@ -14,6 +14,7 @@ import (
 	"math/rand"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type RegistrationService struct {
@@ -114,12 +115,34 @@ func (s *RegistrationService) Verify(ctx context.Context, req VerifyInput) error
 		return errors.New("invalid code")
 	}
 
-	slug, err := generateSlug()
-	if err != nil {
-		log.Error("failed to generate slug", "err", err, "bussiness_name", pending.BusinessName)
+	const maxRetries = 3
+
+	var errRet error
+	var slug string
+	for i := range maxRetries {
+		slug, errRet = generateSlug()
+		if errRet != nil {
+			return errRet
+		}
+
+		pending.ClientSlug = &slug
+
+		errRet = s.repoPostgres.CreateUserWithBusiness(ctx, pending)
+		if errRet == nil {
+			break // успех
+		}
+
+		if isUniqueViolation(errRet) {
+			log.Warn("slug collision, retrying", "attempt", i+1, "slug", slug)
+			continue
+		}
+
+		return errRet
 	}
-	log.Info("slug generated succesfully", "slug", slug)
-	pending.ClientLink = &slug
+
+	if errRet != nil {
+		return fmt.Errorf("failed after retries: %w", errRet)
+	}
 
 	// 3. сохранить в Postgres
 	err = s.repoPostgres.CreateUserWithBusiness(ctx, pending)
@@ -127,13 +150,12 @@ func (s *RegistrationService) Verify(ctx context.Context, req VerifyInput) error
 		log.Error("failed to create user with business in Postgres", "err", err)
 		return err
 	}
-	log.Info("bussiness_admin account is registered")
+	log.Info("business_admin account is registered")
 
 	// 4. удалить из Redis
 	err = s.repoRedis.Delete(ctx, req.RegistrationID)
 	if err != nil {
-		log.Error("failed to delete pending registration from Redis", "registrationID", req.RegistrationID, "err", err)
-		return err
+		log.Warn("failed to delete pending registration from Redis", "registrationID", req.RegistrationID, "err", err)
 	}
 
 	return nil
@@ -148,6 +170,14 @@ func generateSlug() (string, error) {
 	}
 
 	return base64.URLEncoding.EncodeToString(b), nil
+}
+
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == "23505" // unique_violation
+	}
+	return false
 }
 
 func (s *RegistrationService) ResendCode(ctx context.Context, req ResendInput) error {
