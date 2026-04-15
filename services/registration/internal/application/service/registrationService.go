@@ -101,14 +101,6 @@ func (s *RegistrationService) Verify(ctx context.Context, req VerifyInput) error
 		return err
 	}
 
-	if exists, err := s.repoPostgres.GetUserByEmail(ctx, pending.Email); err != nil {
-		log.Error("error checking existing user", "email", pending.Email, "err", err)
-		return fmt.Errorf("error checking existing user: %w", err)
-	} else if exists {
-		log.Warn("user with email already exists", "email", pending.Email)
-		return errors.New("user with this email already exists")
-	}
-
 	// 2. проверить код
 	if pending.Code != req.Code {
 		log.Warn("invalid verification code", "registrationID", req.RegistrationID)
@@ -132,9 +124,14 @@ func (s *RegistrationService) Verify(ctx context.Context, req VerifyInput) error
 			break // успех
 		}
 
-		if isUniqueViolation(errRet) {
-			log.Warn("slug collision, retrying", "attempt", i+1, "slug", slug)
+		if isUniqueViolation(errRet, "businesses_registration_slug_uindex") {
+			log.Warn("slug collision, retrying", "attempt", i+1)
 			continue
+		}
+
+		if isUniqueViolation(errRet, "users_login_key") {
+			log.Warn("email already exists", "email", pending.Email)
+			return errors.New("user with this email already exists")
 		}
 
 		return errRet
@@ -166,10 +163,10 @@ func generateSlug() (string, error) {
 	return base64.URLEncoding.EncodeToString(b), nil
 }
 
-func isUniqueViolation(err error) bool {
+func isUniqueViolation(err error, constraint string) bool {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
-		return pgErr.Code == "23505" // unique_violation
+		return pgErr.Code == "23505" && pgErr.ConstraintName == constraint
 	}
 	return false
 }
