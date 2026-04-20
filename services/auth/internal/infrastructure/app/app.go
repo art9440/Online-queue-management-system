@@ -2,6 +2,7 @@ package app
 
 import (
 	"Online-queue-management-system/libs/logger"
+	"Online-queue-management-system/libs/middleware"
 	"Online-queue-management-system/libs/redisclient"
 	"context"
 	"fmt"
@@ -15,7 +16,7 @@ import (
 	"Online-queue-management-system/services/auth/internal/infrastructure/jwt"
 	"Online-queue-management-system/services/auth/internal/infrastructure/postgres"
 	redisrepo "Online-queue-management-system/services/auth/internal/infrastructure/redis"
-	regconfig "Online-queue-management-system/services/registration/config"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	goredis "github.com/redis/go-redis/v9"
 )
@@ -68,9 +69,11 @@ func New(ctx context.Context) (*App, error) {
 		_, _ = w.Write([]byte("ok"))
 	})
 
+	CorsMux := middleware.CORSMiddleware(mux)
+
 	server := &http.Server{
 		Addr:    ":" + cfg.AuthPort,
-		Handler: httpapi.RequestLogger(mux),
+		Handler: httpapi.RequestLogger(CorsMux),
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
 		},
