@@ -2,6 +2,7 @@ package app
 
 import (
 	"Online-queue-management-system/libs/logger"
+	"Online-queue-management-system/libs/redisclient"
 	"context"
 	"fmt"
 	"net"
@@ -14,6 +15,7 @@ import (
 	"Online-queue-management-system/services/auth/internal/infrastructure/jwt"
 	"Online-queue-management-system/services/auth/internal/infrastructure/postgres"
 	redisrepo "Online-queue-management-system/services/auth/internal/infrastructure/redis"
+	regconfig "Online-queue-management-system/services/registration/config"
 	"github.com/jackc/pgx/v5/pgxpool"
 	goredis "github.com/redis/go-redis/v9"
 )
@@ -67,8 +69,8 @@ func New(ctx context.Context) (*App, error) {
 	})
 
 	server := &http.Server{
-		Addr:              ":" + cfg.AuthPort,
-		Handler:           httpapi.RequestLogger(mux),
+		Addr:    ":" + cfg.AuthPort,
+		Handler: httpapi.RequestLogger(mux),
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
 		},
@@ -148,18 +150,9 @@ func newPostgres(ctx context.Context, cfg config.Config) (*pgxpool.Pool, error) 
 }
 
 func newRedis(ctx context.Context, cfg config.Config) (*goredis.Client, error) {
-	rdb := goredis.NewClient(&goredis.Options{
-		Addr:     cfg.RedisAddr,
-		Password: cfg.RedisPassword,
-		DB:       cfg.RedisDB,
-	})
-
-	pingCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
-
-	if err := rdb.Ping(pingCtx).Err(); err != nil {
-		return nil, err
-	}
-
-	return rdb, nil
+	return redisclient.New(ctx, regconfig.RedisConfig{
+		RedisAddr:     cfg.RedisAddr,
+		RedisPassword: cfg.RedisPassword,
+		RedisDB:       cfg.RedisDB,
+	}, 3*time.Second)
 }

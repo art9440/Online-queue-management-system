@@ -2,6 +2,7 @@ package repos
 
 import (
 	"Online-queue-management-system/services/registration/internal/domain/pending"
+	"Online-queue-management-system/services/registration/internal/domain/recovery"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -11,8 +12,9 @@ import (
 )
 
 const (
-	prefix = "registration:pending"
-	ttl    = 10 * time.Minute
+	pendingPrefix  = "registration:pending"
+	recoveryPrefix = "registration:recovery"
+	ttl            = 10 * time.Minute
 )
 
 type RegistrationRepoRedis struct {
@@ -26,7 +28,7 @@ func NewRegistrationRepoRedis(client *redis.Client) *RegistrationRepoRedis {
 }
 
 func (r *RegistrationRepoRedis) Save(ctx context.Context, p pending.PendingRegistration) error {
-	key := fmt.Sprintf("%s:%s", prefix, p.ID)
+	key := fmt.Sprintf("%s:%s", pendingPrefix, p.ID)
 
 	data, err := json.Marshal(p)
 	if err != nil {
@@ -42,7 +44,7 @@ func (r *RegistrationRepoRedis) Save(ctx context.Context, p pending.PendingRegis
 }
 
 func (r *RegistrationRepoRedis) Get(ctx context.Context, id string) (pending.PendingRegistration, error) {
-	key := fmt.Sprintf("%s:%s", prefix, id)
+	key := fmt.Sprintf("%s:%s", pendingPrefix, id)
 
 	val, err := r.client.Get(ctx, key).Result()
 	if err != nil {
@@ -61,11 +63,55 @@ func (r *RegistrationRepoRedis) Get(ctx context.Context, id string) (pending.Pen
 }
 
 func (r *RegistrationRepoRedis) Delete(ctx context.Context, id string) error {
-	key := fmt.Sprintf("%s:%s", prefix, id)
+	key := fmt.Sprintf("%s:%s", pendingPrefix, id)
 
 	err := r.client.Del(ctx, key).Err()
 	if err != nil {
 		return fmt.Errorf("redis delete: %w", err)
+	}
+
+	return nil
+}
+
+func (r *RegistrationRepoRedis) SaveRecovery(ctx context.Context, item recovery.PasswordRecovery) error {
+	key := fmt.Sprintf("%s:%s", recoveryPrefix, item.ID)
+
+	data, err := json.Marshal(item)
+	if err != nil {
+		return fmt.Errorf("marshal recovery: %w", err)
+	}
+
+	if err := r.client.Set(ctx, key, data, ttl).Err(); err != nil {
+		return fmt.Errorf("redis set recovery: %w", err)
+	}
+
+	return nil
+}
+
+func (r *RegistrationRepoRedis) GetRecovery(ctx context.Context, recoveryID string) (recovery.PasswordRecovery, error) {
+	key := fmt.Sprintf("%s:%s", recoveryPrefix, recoveryID)
+
+	val, err := r.client.Get(ctx, key).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return recovery.PasswordRecovery{}, fmt.Errorf("recovery not found")
+		}
+		return recovery.PasswordRecovery{}, fmt.Errorf("redis get recovery: %w", err)
+	}
+
+	var item recovery.PasswordRecovery
+	if err := json.Unmarshal([]byte(val), &item); err != nil {
+		return recovery.PasswordRecovery{}, fmt.Errorf("unmarshal recovery: %w", err)
+	}
+
+	return item, nil
+}
+
+func (r *RegistrationRepoRedis) DeleteRecovery(ctx context.Context, recoveryID string) error {
+	key := fmt.Sprintf("%s:%s", recoveryPrefix, recoveryID)
+
+	if err := r.client.Del(ctx, key).Err(); err != nil {
+		return fmt.Errorf("redis delete recovery: %w", err)
 	}
 
 	return nil

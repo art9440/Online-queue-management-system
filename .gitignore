@@ -17,6 +17,7 @@ dist/
 *.out
 *.cover
 coverage.out
+.gomodcache/
 
 # =========================
 
