@@ -54,7 +54,7 @@ func (s *RegistrationService) Register(ctx context.Context, req RegisterInput) (
 		return RegisterOutput{}, err
 	}
 
-	pending := pending.PendingRegistration{
+	pendingItem := pending.PendingRegistration{
 		ID:           registrationID,
 		Email:        req.Email,
 		PasswordHash: hash,
@@ -63,12 +63,12 @@ func (s *RegistrationService) Register(ctx context.Context, req RegisterInput) (
 		Code:         code,
 	}
 
-	log.Info("creating pending registration", "registrationID", pending.ID)
-	if err := s.repoRedis.Save(ctx, pending); err != nil {
-		log.Error("failed to save pending registration", "registrationID", pending.ID, "err", err)
+	log.Info("creating pending registration", "registrationID", pendingItem.ID)
+	if err := s.repoRedis.Save(ctx, pendingItem); err != nil {
+		log.Error("failed to save pending registration", "registrationID", pendingItem.ID, "err", err)
 		return RegisterOutput{}, err
 	}
-	log.Info("pending registration saved", "registrationID", pending.ID)
+	log.Info("pending registration saved", "registrationID", pendingItem.ID)
 
 	s.emailQueue.Enqueue(email.EmailMessage{
 		To:      req.Email,
@@ -86,13 +86,13 @@ func (s *RegistrationService) Verify(ctx context.Context, req VerifyInput) error
 	log := logger.From(ctx)
 	log.Info("verifying registration", "registrationID", req.RegistrationID)
 
-	pending, err := s.repoRedis.Get(ctx, req.RegistrationID)
+	pendingItem, err := s.repoRedis.Get(ctx, req.RegistrationID)
 	if err != nil {
 		log.Error("failed to get pending registration from Redis", "registrationID", req.RegistrationID, "err", err)
 		return err
 	}
 
-	if pending.Code != req.Code {
+	if pendingItem.Code != req.Code {
 		log.Warn("invalid verification code", "registrationID", req.RegistrationID)
 		return errors.New("invalid code")
 	}
@@ -107,9 +107,9 @@ func (s *RegistrationService) Verify(ctx context.Context, req VerifyInput) error
 			return errRet
 		}
 
-		pending.ClientSlug = &slug
+		pendingItem.ClientSlug = &slug
 
-		errRet = s.repoPostgres.CreateUserWithBusiness(ctx, pending)
+		errRet = s.repoPostgres.CreateUserWithBusiness(ctx, pendingItem)
 		if errRet == nil {
 			break
 		}
@@ -120,7 +120,7 @@ func (s *RegistrationService) Verify(ctx context.Context, req VerifyInput) error
 		}
 
 		if isUniqueViolation(errRet, "users_login_key") {
-			log.Warn("email already exists", "email", pending.Email)
+			log.Warn("email already exists", "email", pendingItem.Email)
 			return errors.New("user with this email already exists")
 		}
 
@@ -144,16 +144,16 @@ func (s *RegistrationService) ResendCode(ctx context.Context, req ResendInput) e
 	log := logger.From(ctx)
 	log.Info("resending verification code", "registrationID", req.RegistrationID)
 
-	pending, err := s.repoRedis.Get(ctx, req.RegistrationID)
+	pendingItem, err := s.repoRedis.Get(ctx, req.RegistrationID)
 	if err != nil {
 		log.Error("failed to get pending registration from Redis", "registrationID", req.RegistrationID, "err", err)
 		return err
 	}
 
 	s.emailQueue.Enqueue(email.EmailMessage{
-		To:      pending.Email,
+		To:      pendingItem.Email,
 		Subject: "Код подтверждения",
-		Body:    pending.Code,
+		Body:    pendingItem.Code,
 	})
 
 	return nil
@@ -168,33 +168,31 @@ func (s *RegistrationService) RecoverPassword(ctx context.Context, req PasswordR
 		log.Error("failed to check user for password recovery", "email", req.Email, "err", err)
 		return PasswordRecoveryOutput{}, err
 	}
-	if !exists {
-		log.Warn("password recovery requested for unknown email", "email", req.Email)
-		return PasswordRecoveryOutput{
-			Status: "password_recovery_pending",
-		}, nil
-	}
 
 	recoveryID := uuid.NewString()
 	code := generateCode()
-	item := recovery.PasswordRecovery{
+	recoveryItem := recovery.PasswordRecovery{
 		ID:    recoveryID,
 		Email: req.Email,
 		Code:  code,
 	}
 
-	if err := s.recoveryRepo.SaveRecovery(ctx, item); err != nil {
-		log.Error("failed to save password recovery", "email", req.Email, "recoveryID", recoveryID, "err", err)
-		return PasswordRecoveryOutput{}, err
+	if exists {
+		if err := s.recoveryRepo.SaveRecovery(ctx, recoveryItem); err != nil {
+			log.Error("failed to save password recovery", "email", req.Email, "recoveryID", recoveryID, "err", err)
+			return PasswordRecoveryOutput{}, err
+		}
+
+		s.emailQueue.Enqueue(email.EmailMessage{
+			To:      req.Email,
+			Subject: "Код восстановления пароля",
+			Body:    code,
+		})
+		log.Info("password recovery code queued", "email", req.Email, "recoveryID", recoveryID)
+	} else {
+		log.Warn("password recovery requested for unknown email", "email", req.Email, "recoveryID", recoveryID)
 	}
 
-	s.emailQueue.Enqueue(email.EmailMessage{
-		To:      req.Email,
-		Subject: "Код восстановления пароля",
-		Body:    code,
-	})
-
-	log.Info("password recovery code queued", "email", req.Email, "recoveryID", recoveryID)
 	return PasswordRecoveryOutput{
 		Status:     "password_recovery_pending",
 		RecoveryID: recoveryID,
@@ -205,13 +203,13 @@ func (s *RegistrationService) ConfirmPasswordRecovery(ctx context.Context, req P
 	log := logger.From(ctx)
 	log.Info("confirming password recovery", "recoveryID", req.RecoveryID)
 
-	item, err := s.recoveryRepo.GetRecovery(ctx, req.RecoveryID)
+	recoveryItem, err := s.recoveryRepo.GetRecovery(ctx, req.RecoveryID)
 	if err != nil {
-		log.Error("failed to get password recovery", "recoveryID", req.RecoveryID, "err", err)
-		return err
+		log.Warn("password recovery not found", "recoveryID", req.RecoveryID)
+		return errors.New("invalid code")
 	}
 
-	if item.Code != req.Code {
+	if recoveryItem.Code != req.Code {
 		log.Warn("invalid password recovery code", "recoveryID", req.RecoveryID)
 		return errors.New("invalid code")
 	}
@@ -228,32 +226,32 @@ func (s *RegistrationService) ConfirmPasswordRecovery(ctx context.Context, req P
 		return err
 	}
 
-	updated, err := s.repoPostgres.UpdatePasswordByEmail(ctx, item.Email, hash)
+	updated, err := s.repoPostgres.UpdatePasswordByEmail(ctx, recoveryItem.Email, hash)
 	if err != nil {
-		log.Error("failed to update user password", "email", item.Email, "recoveryID", req.RecoveryID, "err", err)
+		log.Error("failed to update user password", "email", recoveryItem.Email, "recoveryID", req.RecoveryID, "err", err)
 		return err
 	}
-	if !updated {
-		log.Warn("password recovery confirmed for unknown email", "email", item.Email, "recoveryID", req.RecoveryID)
-		return errors.New("user not found")
-	}
 
-	s.emailQueue.Enqueue(email.EmailMessage{
-		To:      item.Email,
-		Subject: "Восстановление пароля",
-		HTMLBody: fmt.Sprintf(`
-			<h2>Восстановление пароля</h2>
-			<p>Для вашей учетной записи был выпущен временный пароль:</p>
-			<h1 style="font-size: 28px; letter-spacing: 2px;">%s</h1>
-			<p>Войдите с этим паролем и сразу смените его на новый.</p>
-		`, temporaryPassword),
-	})
+	if updated {
+		s.emailQueue.Enqueue(email.EmailMessage{
+			To:      recoveryItem.Email,
+			Subject: "Восстановление пароля",
+			HTMLBody: fmt.Sprintf(`
+				<h2>Восстановление пароля</h2>
+				<p>Для вашей учетной записи был выпущен временный пароль:</p>
+				<h1 style="font-size: 28px; letter-spacing: 2px;">%s</h1>
+				<p>Войдите с этим паролем и сразу смените его на новый.</p>
+			`, temporaryPassword),
+		})
+		log.Info("password recovery completed", "email", recoveryItem.Email, "recoveryID", req.RecoveryID)
+	} else {
+		log.Warn("password recovery confirmed for unknown email", "email", recoveryItem.Email, "recoveryID", req.RecoveryID)
+	}
 
 	if err := s.recoveryRepo.DeleteRecovery(ctx, req.RecoveryID); err != nil {
 		log.Warn("failed to delete password recovery", "recoveryID", req.RecoveryID, "err", err)
 	}
 
-	log.Info("password recovery completed", "email", item.Email, "recoveryID", req.RecoveryID)
 	return nil
 }
 

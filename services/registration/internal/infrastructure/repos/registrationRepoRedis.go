@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	prefix         = "registration:pending"
+	pendingPrefix  = "registration:pending"
 	recoveryPrefix = "registration:recovery"
 	ttl            = 10 * time.Minute
 )
@@ -28,7 +28,7 @@ func NewRegistrationRepoRedis(client *redis.Client) *RegistrationRepoRedis {
 }
 
 func (r *RegistrationRepoRedis) Save(ctx context.Context, p pending.PendingRegistration) error {
-	key := fmt.Sprintf("%s:%s", prefix, p.ID)
+	key := fmt.Sprintf("%s:%s", pendingPrefix, p.ID)
 
 	data, err := json.Marshal(p)
 	if err != nil {
@@ -44,7 +44,7 @@ func (r *RegistrationRepoRedis) Save(ctx context.Context, p pending.PendingRegis
 }
 
 func (r *RegistrationRepoRedis) Get(ctx context.Context, id string) (pending.PendingRegistration, error) {
-	key := fmt.Sprintf("%s:%s", prefix, id)
+	key := fmt.Sprintf("%s:%s", pendingPrefix, id)
 
 	val, err := r.client.Get(ctx, key).Result()
 	if err != nil {
@@ -63,7 +63,7 @@ func (r *RegistrationRepoRedis) Get(ctx context.Context, id string) (pending.Pen
 }
 
 func (r *RegistrationRepoRedis) Delete(ctx context.Context, id string) error {
-	key := fmt.Sprintf("%s:%s", prefix, id)
+	key := fmt.Sprintf("%s:%s", pendingPrefix, id)
 
 	err := r.client.Del(ctx, key).Err()
 	if err != nil {
