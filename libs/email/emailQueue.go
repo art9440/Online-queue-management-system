@@ -1,16 +1,15 @@
-package queue
+package email
 
 import (
+	"Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/logger"
-	"Online-queue-management-system/services/registration/config"
-	"Online-queue-management-system/services/registration/internal/application/email"
 	"context"
 	"sync"
 	"time"
 )
 
 type EmailQueue struct {
-	queue     chan email.EmailMessage
+	queue     chan EmailMessage
 	workers   int
 	sender    Sender
 	wg        sync.WaitGroup
@@ -25,7 +24,7 @@ func NewEmailQueue(sender Sender, cfg config.QueueConfig) *EmailQueue {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	eq := &EmailQueue{
-		queue:     make(chan email.EmailMessage, 10000),
+		queue:     make(chan EmailMessage, 10000),
 		workers:   cfg.NumWorkers,
 		sender:    sender,
 		closeCh:   make(chan struct{}),
@@ -44,7 +43,7 @@ func NewEmailQueue(sender Sender, cfg config.QueueConfig) *EmailQueue {
 	return eq
 }
 
-func (eq *EmailQueue) Enqueue(msg email.EmailMessage) {
+func (eq *EmailQueue) Enqueue(msg EmailMessage) {
 	log := logger.From(eq.ctx)
 
 	select {

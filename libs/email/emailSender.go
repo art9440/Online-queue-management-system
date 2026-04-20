@@ -1,8 +1,8 @@
 package email
 
 import (
+	"Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/logger"
-	"Online-queue-management-system/services/registration/config"
 	"context"
 	"fmt"
 
@@ -34,14 +34,6 @@ func (e *EmailSender) SendEmail(ctx context.Context, msg EmailMessage) error {
 	m.SetHeader("Subject", msg.Subject)
 
 	body := msg.HTMLBody
-	if body == "" {
-		body = fmt.Sprintf(`
-			<h2>Подтверждение регистрации</h2>
-			<p>Ваш код подтверждения:</p>
-			<h1 style="font-size: 32px; letter-spacing: 5px;">%s</h1>
-			<p>Введите этот код для завершения регистрации.</p>
-		`, msg.Body)
-	}
 
 	m.SetBody("text/html", body)
 

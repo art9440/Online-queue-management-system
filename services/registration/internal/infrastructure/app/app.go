@@ -1,12 +1,11 @@
 package app
 
 import (
+	"Online-queue-management-system/libs/email"
 	"Online-queue-management-system/libs/logger"
 	"Online-queue-management-system/libs/middleware"
 	"Online-queue-management-system/libs/redisclient"
 	"Online-queue-management-system/services/registration/config"
-	"Online-queue-management-system/services/registration/internal/application/email"
-	"Online-queue-management-system/services/registration/internal/application/queue"
 	"Online-queue-management-system/services/registration/internal/application/service"
 	httpserver "Online-queue-management-system/services/registration/internal/infrastructure/httpServer"
 	"Online-queue-management-system/services/registration/internal/infrastructure/repos"
@@ -20,7 +19,7 @@ import (
 type App struct {
 	svc        *service.RegistrationService
 	httpServer *http.Server
-	emailQueue *queue.EmailQueue
+	emailQueue *email.EmailQueue
 }
 
 func NewApp(ctx context.Context, cfg config.Config, dbCfg config.DBConfig) (*App, error) {
@@ -39,7 +38,7 @@ func NewApp(ctx context.Context, cfg config.Config, dbCfg config.DBConfig) (*App
 		return nil, err
 	}
 	emailSender := email.NewEmailSender(cfg.EmailSenderCfg)
-	emailQueue := queue.NewEmailQueue(emailSender, cfg.QueueCfg)
+	emailQueue := email.NewEmailQueue(emailSender, cfg.QueueCfg)
 	svc := service.NewRegistrationService(repoRedis, repoRedis, repoPostgres, emailQueue)
 
 	serverImpl := httpserver.NewHttpServer(svc)
