@@ -2,6 +2,7 @@ package app
 
 import (
 	"Online-queue-management-system/libs/logger"
+	"Online-queue-management-system/libs/middleware"
 	"Online-queue-management-system/libs/redisclient"
 	"Online-queue-management-system/services/registration/config"
 	"Online-queue-management-system/services/registration/internal/application/email"
@@ -55,9 +56,11 @@ func NewApp(ctx context.Context, cfg config.Config, dbCfg config.DBConfig) (*App
 		w.Write([]byte("pong"))
 	})
 
+	handler := middleware.CORSMiddleware(mux)
+
 	httpServer := &http.Server{
 		Addr:    ":" + cfg.RegCfg.RegistrationPort,
-		Handler: mux,
+		Handler: handler,
 	}
 
 	return &App{svc: svc,
