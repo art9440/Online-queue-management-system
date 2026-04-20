@@ -15,3 +15,12 @@ type VerifyRequest struct {
 type ResendCodeRequest struct {
 	RegistrationID string `json:"registration_id"`
 }
+
+type PasswordRecoveryRequest struct {
+	Email string `json:"email"`
+}
+
+type PasswordRecoveryVerifyRequest struct {
+	RecoveryID string `json:"recovery_id"`
+	Code       string `json:"code"`
+}

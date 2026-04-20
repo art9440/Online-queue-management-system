@@ -3,6 +3,7 @@ package app
 import (
 	"Online-queue-management-system/libs/logger"
 	"Online-queue-management-system/libs/middleware"
+	"Online-queue-management-system/libs/redisclient"
 	"context"
 	"fmt"
 	"net"
@@ -152,18 +153,9 @@ func newPostgres(ctx context.Context, cfg config.Config) (*pgxpool.Pool, error) 
 }
 
 func newRedis(ctx context.Context, cfg config.Config) (*goredis.Client, error) {
-	rdb := goredis.NewClient(&goredis.Options{
-		Addr:     cfg.RedisAddr,
-		Password: cfg.RedisPassword,
-		DB:       cfg.RedisDB,
-	})
-
-	pingCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
-
-	if err := rdb.Ping(pingCtx).Err(); err != nil {
-		return nil, err
-	}
-
-	return rdb, nil
+	return redisclient.New(ctx, regconfig.RedisConfig{
+		RedisAddr:     cfg.RedisAddr,
+		RedisPassword: cfg.RedisPassword,
+		RedisDB:       cfg.RedisDB,
+	}, 3*time.Second)
 }

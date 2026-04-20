@@ -33,12 +33,15 @@ func (e *EmailSender) SendEmail(ctx context.Context, msg EmailMessage) error {
 	m.SetHeader("To", msg.To)
 	m.SetHeader("Subject", msg.Subject)
 
-	body := fmt.Sprintf(`
-		<h2>Подтверждение регистрации</h2>
-		<p>Ваш код подтверждения:</p>
-		<h1 style="font-size: 32px; letter-spacing: 5px;">%s</h1>
-		<p>Введите этот код для завершения регистрации.</p>
-	`, msg.Body)
+	body := msg.HTMLBody
+	if body == "" {
+		body = fmt.Sprintf(`
+			<h2>Подтверждение регистрации</h2>
+			<p>Ваш код подтверждения:</p>
+			<h1 style="font-size: 32px; letter-spacing: 5px;">%s</h1>
+			<p>Введите этот код для завершения регистрации.</p>
+		`, msg.Body)
+	}
 
 	m.SetBody("text/html", body)
 
