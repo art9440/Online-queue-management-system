@@ -16,6 +16,7 @@ import (
 	"Online-queue-management-system/services/auth/internal/infrastructure/jwt"
 	"Online-queue-management-system/services/auth/internal/infrastructure/postgres"
 	redisrepo "Online-queue-management-system/services/auth/internal/infrastructure/redis"
+	regconfig "Online-queue-management-system/services/registration/config"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	goredis "github.com/redis/go-redis/v9"
