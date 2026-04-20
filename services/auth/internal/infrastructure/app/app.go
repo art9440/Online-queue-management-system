@@ -10,13 +10,13 @@ import (
 	"net/http"
 	"time"
 
+	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/services/auth/internal/application/service"
 	"Online-queue-management-system/services/auth/internal/infrastructure/config"
 	httpapi "Online-queue-management-system/services/auth/internal/infrastructure/http"
 	"Online-queue-management-system/services/auth/internal/infrastructure/jwt"
 	"Online-queue-management-system/services/auth/internal/infrastructure/postgres"
 	redisrepo "Online-queue-management-system/services/auth/internal/infrastructure/redis"
-	regconfig "Online-queue-management-system/services/registration/config"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	goredis "github.com/redis/go-redis/v9"
@@ -154,7 +154,7 @@ func newPostgres(ctx context.Context, cfg config.Config) (*pgxpool.Pool, error) 
 }
 
 func newRedis(ctx context.Context, cfg config.Config) (*goredis.Client, error) {
-	return redisclient.New(ctx, regconfig.RedisConfig{
+	return redisclient.New(ctx, libconfig.RedisConfig{
 		RedisAddr:     cfg.RedisAddr,
 		RedisPassword: cfg.RedisPassword,
 		RedisDB:       cfg.RedisDB,

@@ -14,12 +14,6 @@ type EmailSenderConfig struct {
 	SendTimeOut time.Duration
 }
 
-type RedisConfig struct {
-	RedisAddr     string
-	RedisPassword string
-	RedisDB       int
-}
-
 type QueueConfig struct {
 	NumWorkers int
 	RateLimit  time.Duration
@@ -31,7 +25,7 @@ type RegistrationConfig struct {
 }
 
 type Config struct {
-	RedisCfg       RedisConfig
+	RedisCfg       config.RedisConfig
 	EmailSenderCfg EmailSenderConfig
 	QueueCfg       QueueConfig
 	RegCfg         RegistrationConfig
@@ -54,7 +48,7 @@ func LoadConfig(ctx context.Context) (*Config, error) {
 		return nil, err
 	}
 
-	redisCfg := RedisConfig{
+	redisCfg := config.RedisConfig{
 		RedisAddr:     redisAddr,
 		RedisPassword: redisPassword,
 		RedisDB:       redisDB,
