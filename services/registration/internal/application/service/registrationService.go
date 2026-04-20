@@ -1,9 +1,8 @@
 package service
 
 import (
+	"Online-queue-management-system/libs/email"
 	"Online-queue-management-system/libs/logger"
-	"Online-queue-management-system/services/registration/internal/application/email"
-	"Online-queue-management-system/services/registration/internal/application/queue"
 	"Online-queue-management-system/services/registration/internal/domain/pending"
 	"Online-queue-management-system/services/registration/internal/domain/recovery"
 	"Online-queue-management-system/services/registration/internal/infrastructure/security"
@@ -22,10 +21,10 @@ type RegistrationService struct {
 	repoRedis    PendingRepo
 	recoveryRepo RecoveryRepo
 	repoPostgres UserRepo
-	emailQueue   *queue.EmailQueue
+	emailQueue   *email.EmailQueue
 }
 
-func NewRegistrationService(repoRedis PendingRepo, recoveryRepo RecoveryRepo, repoPostgres UserRepo, queue *queue.EmailQueue) *RegistrationService {
+func NewRegistrationService(repoRedis PendingRepo, recoveryRepo RecoveryRepo, repoPostgres UserRepo, queue *email.EmailQueue) *RegistrationService {
 	return &RegistrationService{
 		repoRedis:    repoRedis,
 		recoveryRepo: recoveryRepo,
@@ -74,7 +73,14 @@ func (s *RegistrationService) Register(ctx context.Context, req RegisterInput) (
 		To:      req.Email,
 		Subject: "Код подтверждения",
 		Body:    code,
+		HTMLBody: fmt.Sprintf(`
+			<h2>Подтверждение регистрации</h2>
+			<p>Ваш код подтверждения:</p>
+			<h1 style="font-size: 32px; letter-spacing: 5px;">%s</h1>
+			<p>Введите этот код для завершения регистрации.</p>
+		`, code),
 	})
+	log.Info("verification email queued", "email", req.Email, "registrationID", pendingItem.ID)
 
 	return RegisterOutput{
 		Status:         "pending",
