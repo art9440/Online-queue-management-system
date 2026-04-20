@@ -1,7 +1,7 @@
 package redisclient
 
 import (
-	"Online-queue-management-system/services/registration/config"
+	"Online-queue-management-system/libs/config"
 	"context"
 	"time"
 
