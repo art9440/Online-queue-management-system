@@ -77,5 +77,19 @@ services:
     env_file:
       - .env
 
+  branches:
+    build:
+      context: .
+      dockerfile: ./services/branches/branches.Dockerfile
+    container_name: online_queue_branches
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "8083:8083"
+    env_file:
+      - .env
+
+
 volumes:
   postgres_data:

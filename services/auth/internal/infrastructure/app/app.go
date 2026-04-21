@@ -76,7 +76,7 @@ func New(ctx context.Context) (*App, error) {
 
 	server := &http.Server{
 		Addr:    ":" + cfg.AuthPort,
-		Handler: httpapi.RequestLogger(CorsMux),
+		Handler: middleware.RequestLogger(CorsMux),
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
 		},
