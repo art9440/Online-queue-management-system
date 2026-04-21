@@ -1,6 +1,7 @@
 package app
 
 import (
+	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/email"
 	"Online-queue-management-system/libs/logger"
 	"Online-queue-management-system/libs/middleware"
@@ -22,7 +23,7 @@ type App struct {
 	emailQueue *email.EmailQueue
 }
 
-func NewApp(ctx context.Context, cfg config.Config, dbCfg config.DBConfig) (*App, error) {
+func NewApp(ctx context.Context, cfg config.Config, dbCfg libconfig.DBConfig) (*App, error) {
 	log := logger.From(ctx)
 	redisClient, err := redisclient.New(ctx, cfg.RedisCfg, 5*time.Second)
 

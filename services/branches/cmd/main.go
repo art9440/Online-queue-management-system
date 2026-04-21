@@ -1,10 +1,10 @@
 package cmd
 
 import (
+	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/logger"
 	branchesConfig "Online-queue-management-system/services/branches/config"
 	"Online-queue-management-system/services/branches/internal/infrastructure/app"
-	"Online-queue-management-system/services/registration/config"
 	"context"
 	"log/slog"
 	"os"
@@ -42,7 +42,7 @@ func run(ctx context.Context) error {
 		return err
 	}
 
-	dbCfg, err := config.LoadDBConfig(ctx)
+	dbCfg, err := libconfig.LoadDBConfig(ctx)
 	if err != nil {
 		log.Error("error loading db config", "err", err)
 		return err

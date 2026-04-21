@@ -1,11 +1,11 @@
 package app
 
 import (
+	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/logger"
 	"Online-queue-management-system/libs/redisclient"
 	branchesConfig "Online-queue-management-system/services/branches/config"
 	"Online-queue-management-system/services/branches/internal/infrastructure/repos"
-	"Online-queue-management-system/services/registration/config"
 	"context"
 	"fmt"
 	"time"
@@ -14,7 +14,7 @@ import (
 type BranchesApp struct {
 }
 
-func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg config.DBConfig) (*BranchesApp, error) {
+func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg libconfig.DBConfig) (*BranchesApp, error) {
 	log := logger.From(ctx)
 	redisClient, err := redisclient.New(ctx, cfg.RedisCfg, 5*time.Second)
 
@@ -29,10 +29,13 @@ func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg config.DBConfi
 		log.Error("error creating registration repo", "err", err)
 		return nil, err
 	}
+	_ = repoRedis
+	_ = repoPostgres
 
 	return &BranchesApp{}, nil
 }
 
 func (a *BranchesApp) Run(ctx context.Context) error {
-
+	<-ctx.Done()
+	return nil
 }

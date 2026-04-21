@@ -13,7 +13,7 @@ func MustGet(ctx context.Context, key string) (string, error) {
 	log := logger.From(ctx)
 	val := os.Getenv(key)
 	if val == "" {
-		log.Error("env %s is required but not set", key)
+		log.Error("env is required but not set", "key", key)
 		return "", fmt.Errorf("env %s is required but not set", key)
 	}
 	return val, nil
@@ -23,7 +23,7 @@ func Get(ctx context.Context, key string, defaultVal string) string {
 	log := logger.From(ctx)
 	val := os.Getenv(key)
 	if val == "" {
-		log.Warn("env %s is not set, using default value %s", key, defaultVal)
+		log.Warn("env is not set, using default value", "key", key, "default", defaultVal)
 		return defaultVal
 	}
 	return val
@@ -39,7 +39,7 @@ func GetInt(ctx context.Context, key string) (int, error) {
 
 	i, err := strconv.Atoi(val)
 	if err != nil {
-		log.Error("env %s must be int, got %s", key, val)
+		log.Error("env must be int", "key", key, "value", val)
 		return 0, err
 	}
 
@@ -55,7 +55,7 @@ func GetIntDefault(ctx context.Context, key string, defaultVal int) int {
 
 	i, err := strconv.Atoi(val)
 	if err != nil {
-		log.Error("env %s must be int, got %s", key, val)
+		log.Error("env must be int", "key", key, "value", val)
 		return defaultVal
 	}
 
@@ -71,7 +71,7 @@ func GetDuration(ctx context.Context, key string) (time.Duration, error) {
 	}
 	d, err := time.ParseDuration(val)
 	if err != nil {
-		log.Error("env %s must be duration, got %s", key, val)
+		log.Error("env must be duration", "key", key, "value", val)
 		return 0, err
 	}
 
@@ -87,7 +87,7 @@ func GetDurationDefault(ctx context.Context, key string, defaultVal time.Duratio
 
 	d, err := time.ParseDuration(val)
 	if err != nil {
-		log.Error("env %s must be int, got %s", key, val)
+		log.Error("env must be duration", "key", key, "value", val)
 		return defaultVal
 	}
 
@@ -103,7 +103,7 @@ func GetBool(ctx context.Context, key string, defaultVal bool) (bool, error) {
 
 	b, err := strconv.ParseBool(val)
 	if err != nil {
-		log.Error("env %s must be bool, got %s", key, val)
+		log.Error("env must be bool", "key", key, "value", val)
 		return defaultVal, err
 	}
 
