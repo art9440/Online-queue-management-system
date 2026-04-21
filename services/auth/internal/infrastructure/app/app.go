@@ -62,6 +62,7 @@ func New(ctx context.Context) (*App, error) {
 
 	authService := service.New(userRepo, sessionRepo, tokenManager)
 	cookieManager := httpapi.NewCookieManager(cfg.CookieSecure)
+	log.Info("JWT secret", "secret", cfg.JWTAccessSecret)
 	parser := auth.NewTokenParser(cfg.JWTAccessSecret)
 	handler := httpapi.NewHandler(authService, parser, cookieManager, cfg.AccessTTL, cfg.RefreshTTL)
 

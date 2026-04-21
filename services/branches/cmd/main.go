@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"Online-queue-management-system/libs/logger"

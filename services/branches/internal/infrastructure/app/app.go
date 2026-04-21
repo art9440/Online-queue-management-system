@@ -33,6 +33,7 @@ func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg config.DBConfi
 	svc := service.New(repoPostgres)
 
 	serverImpl := httpserver.NewHttpServer(svc)
+	log.Info("JWT secret", "secret", cfg.BranchesCfg.JWTAccessSecret)
 	parser := auth.NewTokenParser(cfg.BranchesCfg.JWTAccessSecret)
 	mux := http.NewServeMux()
 
