@@ -26,7 +26,7 @@ func NewApp(ctx context.Context, cfg config.Config, dbCfg config.DBConfig) (*App
 	log := logger.From(ctx)
 	redisClient, err := redisclient.New(ctx, cfg.RedisCfg, 5*time.Second)
 
-	if err := waitForRedis(ctx, redisClient); err != nil {
+	if err := redisclient.WaitForRedis(ctx, redisClient); err != nil {
 		log.Error("redis not ready", "err", err)
 		return nil, fmt.Errorf("redis not ready: %w", err)
 	}

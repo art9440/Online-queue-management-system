@@ -3,15 +3,18 @@ package http
 import (
 	"encoding/json"
 	"errors"
+	"net/http"
 	stdhttp "net/http"
 	"time"
 
+	"Online-queue-management-system/libs/auth"
 	"Online-queue-management-system/services/auth/internal/application/service"
 	"Online-queue-management-system/services/auth/internal/domain"
 )
 
 type Handler struct {
 	auth       *service.AuthService
+	parser     *auth.TokenParser
 	cookies    *CookieManager
 	accessTTL  time.Duration
 	refreshTTL time.Duration
@@ -24,12 +27,14 @@ type LoginRequest struct {
 
 func NewHandler(
 	auth *service.AuthService,
+	parser *auth.TokenParser,
 	cookies *CookieManager,
 	accessTTL time.Duration,
 	refreshTTL time.Duration,
 ) *Handler {
 	return &Handler{
 		auth:       auth,
+		parser:     parser,
 		cookies:    cookies,
 		accessTTL:  accessTTL,
 		refreshTTL: refreshTTL,
@@ -120,29 +125,25 @@ func (h *Handler) handleLogout(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	writeJSON(w, stdhttp.StatusOK, MessageResponse{Message: "ok"})
 }
 
-func (h *Handler) handleMe(w stdhttp.ResponseWriter, r *stdhttp.Request) {
-	if r.Method != stdhttp.MethodGet {
-		writeJSON(w, stdhttp.StatusMethodNotAllowed, MessageResponse{Message: "method not allowed"})
+func (h *Handler) handleMe(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, MessageResponse{Message: "method not allowed"})
 		return
 	}
 
 	cookie, err := r.Cookie("access_token")
 	if err != nil || cookie.Value == "" {
-		writeJSON(w, stdhttp.StatusUnauthorized, MessageResponse{Message: "unauthorized"})
+		writeJSON(w, http.StatusUnauthorized, MessageResponse{Message: "unauthorized"})
 		return
 	}
 
-	claims, err := h.auth.Me(r.Context(), cookie.Value)
+	claims, err := h.parser.ParseAccessToken(cookie.Value)
 	if err != nil {
-		if errors.Is(err, domain.ErrUnauthorized) {
-			writeJSON(w, stdhttp.StatusUnauthorized, MessageResponse{Message: "unauthorized"})
-			return
-		}
-		writeJSON(w, stdhttp.StatusInternalServerError, MessageResponse{Message: "internal error"})
+		writeJSON(w, http.StatusUnauthorized, MessageResponse{Message: "unauthorized"})
 		return
 	}
 
-	writeJSON(w, stdhttp.StatusOK, MeResponse{
+	writeJSON(w, http.StatusOK, MeResponse{
 		UserID:     claims.UserID,
 		Login:      claims.Login,
 		RoleID:     claims.RoleID,

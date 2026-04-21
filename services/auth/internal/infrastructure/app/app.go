@@ -1,6 +1,7 @@
 package app
 
 import (
+	"Online-queue-management-system/libs/auth"
 	"Online-queue-management-system/libs/logger"
 	"Online-queue-management-system/libs/middleware"
 	"Online-queue-management-system/libs/redisclient"
@@ -61,7 +62,8 @@ func New(ctx context.Context) (*App, error) {
 
 	authService := service.New(userRepo, sessionRepo, tokenManager)
 	cookieManager := httpapi.NewCookieManager(cfg.CookieSecure)
-	handler := httpapi.NewHandler(authService, cookieManager, cfg.AccessTTL, cfg.RefreshTTL)
+	parser := auth.NewTokenParser(cfg.JWTAccessSecret)
+	handler := httpapi.NewHandler(authService, parser, cookieManager, cfg.AccessTTL, cfg.RefreshTTL)
 
 	mux := http.NewServeMux()
 	handler.Register(mux)

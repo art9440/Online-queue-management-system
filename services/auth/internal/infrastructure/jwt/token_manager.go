@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"Online-queue-management-system/services/auth/internal/domain"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
@@ -80,31 +81,6 @@ func (m *TokenManager) NewRefreshToken(user *domain.User) (string, string, error
 	}
 
 	return signed, jti, nil
-}
-
-func (m *TokenManager) ParseAccessToken(tokenString string) (*domain.AccessClaims, error) {
-	claims := &accessClaimsDTO{}
-
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
-		if token.Method != jwt.SigningMethodHS256 {
-			return nil, fmt.Errorf("unexpected signing method")
-		}
-		return m.accessSecret, nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	if !token.Valid {
-		return nil, errors.New("invalid access token")
-	}
-
-	return &domain.AccessClaims{
-		UserID:     claims.UserID,
-		Login:      claims.Login,
-		RoleID:     claims.RoleID,
-		BusinessID: claims.BusinessID,
-		BranchID:   claims.BranchID,
-	}, nil
 }
 
 func (m *TokenManager) ParseRefreshToken(tokenString string) (*domain.RefreshClaims, error) {
