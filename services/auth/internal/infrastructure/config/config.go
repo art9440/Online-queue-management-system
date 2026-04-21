@@ -58,7 +58,7 @@ func Load() (Config, error) {
 		DBPort:     mustEnv("DB_PORT"),
 		DBUser:     mustEnv("DB_USER"),
 		DBPassword: mustEnv("DB_PASSWORD"),
-		DBName:     mustEnv("DB_NAME"),
+		DBName:     mustEnv("POSTGRES_DB"),
 		DBSSLMode:  getEnv("DB_SSLMODE", "disable"),
 
 		RedisAddr:     mustEnv("REDIS_ADDR"),
