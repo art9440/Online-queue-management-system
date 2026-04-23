@@ -27,7 +27,7 @@ func (r *UserRepository) GetByLogin(ctx context.Context, login string) (*domain.
 		u.business_id,
 		u.branch_id
 	FROM users u
-	JOIN roles r ON r.id = u.role_id
+	LEFT JOIN roles r ON r.id = u.role_id
 	WHERE u.login = $1
 	LIMIT 1
 	`
@@ -60,7 +60,7 @@ func (r *UserRepository) GetByID(ctx context.Context, id int64) (*domain.User, e
 		u.business_id,
 		u.branch_id
 	FROM users u
-	JOIN roles r ON r.id = u.role_id
+	LEFT JOIN roles r ON r.id = u.role_id
 	WHERE u.id = $1
 	LIMIT 1
 	`
