@@ -5,6 +5,7 @@ type User struct {
 	Login        string
 	PasswordHash string
 	RoleID       int64
+	RoleName     string
 	BusinessID   int64
 	BranchID     *int64
 }

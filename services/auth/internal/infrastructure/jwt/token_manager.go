@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"Online-queue-management-system/services/auth/internal/domain"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
@@ -15,6 +16,7 @@ type accessClaimsDTO struct {
 	UserID     int64  `json:"user_id"`
 	Login      string `json:"login"`
 	RoleID     int64  `json:"role_id"`
+	RoleName   string `json:"role_name,omitempty"`
 	BusinessID int64  `json:"business_id"`
 	BranchID   *int64 `json:"branch_id,omitempty"`
 	jwt.RegisteredClaims
@@ -47,6 +49,7 @@ func (m *TokenManager) NewAccessToken(user *domain.User) (string, error) {
 		UserID:     user.ID,
 		Login:      user.Login,
 		RoleID:     user.RoleID,
+		RoleName:   user.RoleName,
 		BusinessID: user.BusinessID,
 		BranchID:   user.BranchID,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -80,31 +83,6 @@ func (m *TokenManager) NewRefreshToken(user *domain.User) (string, string, error
 	}
 
 	return signed, jti, nil
-}
-
-func (m *TokenManager) ParseAccessToken(tokenString string) (*domain.AccessClaims, error) {
-	claims := &accessClaimsDTO{}
-
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
-		if token.Method != jwt.SigningMethodHS256 {
-			return nil, fmt.Errorf("unexpected signing method")
-		}
-		return m.accessSecret, nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	if !token.Valid {
-		return nil, errors.New("invalid access token")
-	}
-
-	return &domain.AccessClaims{
-		UserID:     claims.UserID,
-		Login:      claims.Login,
-		RoleID:     claims.RoleID,
-		BusinessID: claims.BusinessID,
-		BranchID:   claims.BranchID,
-	}, nil
 }
 
 func (m *TokenManager) ParseRefreshToken(tokenString string) (*domain.RefreshClaims, error) {

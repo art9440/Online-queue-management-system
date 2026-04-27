@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"Online-queue-management-system/services/auth/internal/domain"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -21,7 +22,6 @@ type SessionRepository interface {
 type TokenManager interface {
 	NewAccessToken(user *domain.User) (string, error)
 	NewRefreshToken(user *domain.User) (token string, jti string, err error)
-	ParseAccessToken(token string) (*domain.AccessClaims, error)
 	ParseRefreshToken(token string) (*domain.RefreshClaims, error)
 }
 
@@ -123,13 +123,4 @@ func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 	}
 
 	return s.sessions.DeleteRefreshSession(ctx, claims.JTI)
-}
-
-func (s *AuthService) Me(ctx context.Context, accessToken string) (*domain.AccessClaims, error) {
-	claims, err := s.tokens.ParseAccessToken(accessToken)
-	if err != nil {
-		return nil, domain.ErrUnauthorized
-	}
-
-	return claims, nil
 }
