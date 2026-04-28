@@ -23,7 +23,7 @@ jobs:
         run: go mod download
 
       - name: Lint
-        uses: golangci/golangci-lint-action@1e7e51e
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20
         with:
           version: latest
 
@@ -72,6 +72,6 @@ jobs:
           fetch-depth: 0
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@ffc3010 
+        uses: SonarSource/sonarcloud-github-action@ffc3010689be73b8e5ae0c57ce35968afd7909e8
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
