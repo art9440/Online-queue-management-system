@@ -1,4 +1,4 @@
-export const Select = ({name, value, onChange, required, businessTypes}) => {
+export const Select = ({name, value, onChange, required, businessTypes, ...props}) => {
     return (
         <select className="w-full px-4 py-3 border rounded-lg
         focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
@@ -11,6 +11,7 @@ export const Select = ({name, value, onChange, required, businessTypes}) => {
                     {type.label}
                 </option>
             ))}
+        {...props}
         </select>
     )
 }

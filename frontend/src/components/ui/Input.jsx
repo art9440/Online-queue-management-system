@@ -1,7 +1,7 @@
 import { FieldError } from "./FieldError"
 
 export const Input = ({
-    label, type="text", name, value, autoComplete, onChange, onBlur, placeholder, required=true, error
+    label, type="text", name, value, autoComplete, onChange, onBlur, placeholder, required=true, error, ...props
 }) => {
     return (
         <div className="mb-5">
@@ -19,6 +19,7 @@ export const Input = ({
                 onBlur={onBlur}
                 placeholder={placeholder}
                 required={required}
+                {...props}
                 />
 
             <FieldError error={error}/>
