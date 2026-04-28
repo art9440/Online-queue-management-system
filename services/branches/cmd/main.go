@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	libconfig "Online-queue-management-system/libs/config"
