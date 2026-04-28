@@ -1,82 +1,77 @@
-name: Go CI
+name: Full CI
 
 on:
   push:
-    branches: [ "main", "develop" ]
+    branches: [main, develop]
   pull_request:
 
 jobs:
-  lint:
-    name: Lint
+  backend:
+    name: Backend (Go)
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.22'
 
-      - name: Run golangci-lint
+      - name: Install deps
+        run: go mod download
+
+      - name: Lint
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
 
-  test:
-    name: Tests
-    runs-on: ubuntu-latest
+      - name: Test with coverage
+        run: go test ./... -coverprofile=coverage.out -count=1
 
-    services:
-      docker:
-        image: docker:dind
-        options: --privileged
+  frontend:
+    name: Frontend (React)
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
+      - uses: actions/setup-node@v4
         with:
-          go-version: '1.22'
+          node-version: '20'
 
-      - name: Install dependencies
-        run: go mod download
+      - name: Install deps
+        run: |
+          cd frontend
+          npm ci
 
-      - name: Run tests with coverage
-        run: go test ./... -coverprofile=coverage.out
+      - name: Lint
+        run: |
+          cd frontend
+          npm run lint
 
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    needs: [lint, test]
-
-    steps:
-      - uses: actions/checkout@v4
+      - name: Test
+        run: |
+          cd frontend
+          npm test -- --watchAll=false
 
       - name: Build
-        run: go build ./...
+        run: |
+          cd frontend
+          npm run build
 
   sonar:
-  name: SonarCloud
-  runs-on: ubuntu-latest
-  needs: [build]
+    name: SonarCloud
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
 
-  steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Setup Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.22'
-
-    - name: Run tests with coverage
-      run: go test ./... -coverprofile=coverage.out
-
-    - name: SonarCloud Scan
-      uses: SonarSource/sonarcloud-github-action@v2
-      env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v2
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
