@@ -37,10 +37,10 @@ func (r *RegistrationRepoPostgres) CreateUserWithBusiness(ctx context.Context, p
 	// 1. создать бизнес
 	var businessID int64
 	err = tx.QueryRowContext(ctx, `
-		INSERT INTO businesses (name, type)
-		VALUES ($1, $2)
+		INSERT INTO businesses (name, type, registration_slug)
+		VALUES ($1, $2, $3)
 		RETURNING id
-	`, p.BusinessName, p.BusinessType).Scan(&businessID)
+	`, p.BusinessName, p.BusinessType, p.ClientSlug).Scan(&businessID)
 	if err != nil {
 		return fmt.Errorf("insert business: %w", err)
 	}
@@ -64,4 +64,33 @@ func (r *RegistrationRepoPostgres) CreateUserWithBusiness(ctx context.Context, p
 	}
 
 	return tx.Commit()
+}
+
+func (r *RegistrationRepoPostgres) GetUserByEmail(ctx context.Context, email string) (bool, error) {
+	var exists bool
+	err := r.db.QueryRowContext(ctx, `
+		SELECT EXISTS(SELECT 1 FROM users WHERE login = $1)
+	`, email).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("check user: %w", err)
+	}
+	return exists, nil
+}
+
+func (r *RegistrationRepoPostgres) UpdatePasswordByEmail(ctx context.Context, email string, passwordHash string) (bool, error) {
+	result, err := r.db.ExecContext(ctx, `
+		UPDATE users
+		SET password_hash = $1
+		WHERE login = $2
+	`, passwordHash, email)
+	if err != nil {
+		return false, fmt.Errorf("update password: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("rows affected: %w", err)
+	}
+
+	return rowsAffected > 0, nil
 }

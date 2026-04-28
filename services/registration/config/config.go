@@ -1,45 +1,103 @@
 package config
 
 import (
-	"Online-queue-management-system/libs/config"
+	libconfig "Online-queue-management-system/libs/config"
 	"context"
+	"time"
 )
 
-type Config struct {
-	RedisAddr        string
+type RegistrationConfig struct {
 	RegistrationPort string
-	RedisPassword    string
-	RedisDB          int
+}
+
+type Config struct {
+	RedisCfg       libconfig.RedisConfig
+	EmailSenderCfg libconfig.EmailSenderConfig
+	QueueCfg       libconfig.QueueConfig
+	RegCfg         RegistrationConfig
 }
 
 func LoadConfig(ctx context.Context) (*Config, error) {
-
-	redisAddr, err := config.MustGet(ctx, "REDIS_ADDR")
+	//redis config
+	redisAddr, err := libconfig.MustGet(ctx, "REDIS_ADDR")
 	if err != nil {
 		return nil, err
 	}
 
-	registrationPort, err := config.MustGet(ctx, "REGISTRATION_PORT")
+	redisPassword, err := libconfig.MustGet(ctx, "REDIS_PASSWORD")
 	if err != nil {
 		return nil, err
 	}
 
-	redisPassword, err := config.MustGet(ctx, "REDIS_PASSWORD")
+	redisDB, err := libconfig.GetInt(ctx, "REDIS_DB")
 	if err != nil {
 		return nil, err
 	}
 
-	redisDB, err := config.GetInt(ctx, "REDIS_DB")
+	redisCfg := libconfig.RedisConfig{
+		RedisAddr:     redisAddr,
+		RedisPassword: redisPassword,
+		RedisDB:       redisDB,
+	}
+	//registration config
+	registrationPort, err := libconfig.MustGet(ctx, "REGISTRATION_PORT")
 	if err != nil {
 		return nil, err
+	}
+	regCfg := RegistrationConfig{
+		RegistrationPort: registrationPort,
+	}
+
+	//emailSender config
+	smtpHost, err := libconfig.MustGet(ctx, "SMTP_HOST")
+	if err != nil {
+		return nil, err
+	}
+
+	smtpPort, err := libconfig.GetInt(ctx, "SMTP_PORT")
+	if err != nil {
+		return nil, err
+	}
+
+	smtpUser, err := libconfig.MustGet(ctx, "SMTP_USER")
+	if err != nil {
+		return nil, err
+	}
+
+	smtpPass, err := libconfig.MustGet(ctx, "SMTP_PASS")
+	if err != nil {
+		return nil, err
+	}
+
+	emailTimeOut := libconfig.GetDurationDefault(ctx, "EMAIL_TIMEOUT", 20*time.Second)
+
+	senderCfg := libconfig.EmailSenderConfig{
+		SMTPHost:    smtpHost,
+		SMTPPort:    smtpPort,
+		SMTPUser:    smtpUser,
+		SMTPPass:    smtpPass,
+		SendTimeOut: emailTimeOut,
+	}
+
+	//queue config
+	workers := libconfig.GetIntDefault(ctx, "NUM_WORKERS", 10)
+
+	rateLimit := libconfig.GetDurationDefault(ctx, "RATE_LIMIT", 30*time.Second)
+
+	wrkTimeOut := libconfig.GetDurationDefault(ctx, "WRK_TIMEOUT", 10*time.Second)
+
+	queueCfg := libconfig.QueueConfig{
+		NumWorkers: workers,
+		RateLimit:  rateLimit,
+		WrkTimeOut: wrkTimeOut,
 	}
 
 	return &Config{
-		RedisAddr:        redisAddr,
-		RegistrationPort: registrationPort,
-		RedisPassword:    redisPassword,
-		RedisDB:          redisDB,
-	}, nil
+		RedisCfg:       redisCfg,
+		RegCfg:         regCfg,
+		EmailSenderCfg: senderCfg,
+		QueueCfg:       queueCfg,
+	}, err
 }
 
 type DBConfig struct {
@@ -52,32 +110,32 @@ type DBConfig struct {
 }
 
 func LoadDBConfig(ctx context.Context) (*DBConfig, error) {
-	host, err := config.MustGet(ctx, "DB_HOST")
+	host, err := libconfig.MustGet(ctx, "DB_HOST")
 	if err != nil {
 		return nil, err
 	}
 
-	port, err := config.GetInt(ctx, "DB_PORT")
+	port, err := libconfig.GetInt(ctx, "DB_PORT")
 	if err != nil {
 		return nil, err
 	}
 
-	user, err := config.MustGet(ctx, "DB_USER")
+	user, err := libconfig.MustGet(ctx, "DB_USER")
 	if err != nil {
 		return nil, err
 	}
 
-	ssl, err := config.MustGet(ctx, "DB_SSLMODE")
+	ssl, err := libconfig.MustGet(ctx, "DB_SSLMODE")
 	if err != nil {
 		return nil, err
 	}
 
-	password, err := config.MustGet(ctx, "DB_PASSWORD")
+	password, err := libconfig.MustGet(ctx, "DB_PASSWORD")
 	if err != nil {
 		return nil, err
 	}
 
-	dsn := config.Get(ctx, "DB_DSN", "")
+	dsn := libconfig.Get(ctx, "DB_DSN", "")
 	return &DBConfig{
 		DSN:      dsn,
 		Host:     host,

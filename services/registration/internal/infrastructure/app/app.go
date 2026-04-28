@@ -1,7 +1,9 @@
 package app
 
 import (
+	"Online-queue-management-system/libs/email"
 	"Online-queue-management-system/libs/logger"
+	"Online-queue-management-system/libs/middleware"
 	"Online-queue-management-system/libs/redisclient"
 	"Online-queue-management-system/services/registration/config"
 	"Online-queue-management-system/services/registration/internal/application/service"
@@ -17,11 +19,12 @@ import (
 type App struct {
 	svc        *service.RegistrationService
 	httpServer *http.Server
+	emailQueue *email.EmailQueue
 }
 
 func NewApp(ctx context.Context, cfg config.Config, dbCfg config.DBConfig) (*App, error) {
 	log := logger.From(ctx)
-	redisClient, err := redisclient.New(ctx, cfg, 5*time.Second)
+	redisClient, err := redisclient.New(ctx, cfg.RedisCfg, 5*time.Second)
 
 	if err := waitForRedis(ctx, redisClient); err != nil {
 		log.Error("redis not ready", "err", err)
@@ -34,29 +37,36 @@ func NewApp(ctx context.Context, cfg config.Config, dbCfg config.DBConfig) (*App
 		log.Error("error creating registration repo", "err", err)
 		return nil, err
 	}
-
-	svc := service.NewRegistrationService(repoRedis, repoPostgres)
+	emailSender := email.NewEmailSender(cfg.EmailSenderCfg)
+	emailQueue := email.NewEmailQueue(emailSender, cfg.QueueCfg)
+	svc := service.NewRegistrationService(repoRedis, repoRedis, repoPostgres, emailQueue)
 
 	serverImpl := httpserver.NewHttpServer(svc)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/register", httpserver.RecoverMiddleware(serverImpl.Register))
 	mux.HandleFunc("/verify", httpserver.RecoverMiddleware(serverImpl.Verify))
+	mux.HandleFunc("/resend", httpserver.RecoverMiddleware(serverImpl.ResendCode))
+	mux.HandleFunc("/password-recovery", httpserver.RecoverMiddleware(serverImpl.PasswordRecovery))
+	mux.HandleFunc("/password-recovery/confirm", httpserver.RecoverMiddleware(serverImpl.ConfirmPasswordRecovery))
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 	//для теста
 	mux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("PING HIT")
 		w.Write([]byte("pong"))
 	})
 
+	handler := middleware.CORSMiddleware(mux)
+
 	httpServer := &http.Server{
-		Addr:    ":" + cfg.RegistrationPort,
-		Handler: mux,
+		Addr:    ":" + cfg.RegCfg.RegistrationPort,
+		Handler: handler,
 	}
 
-	return &App{svc: svc, httpServer: httpServer}, nil
+	return &App{svc: svc,
+		httpServer: httpServer,
+		emailQueue: emailQueue}, nil
 }
 
 func (a *App) Run(ctx context.Context) error {
@@ -102,6 +112,15 @@ func (a *App) Run(ctx context.Context) error {
 		log.Error("failed to shutdown http server", "err", err)
 		return fmt.Errorf("shutdown failed: %w", err)
 	}
+	log.Info("http server stopped")
+
+	log.Info("shutting down email queue", "pending_emails", func() int {
+		len, _, _ := a.emailQueue.GetStats()
+		return len
+	}())
+
+	a.emailQueue.Shutdown()
+	log.Info("email queue stopped")
 
 	log.Info("registration service stopped")
 	return nil

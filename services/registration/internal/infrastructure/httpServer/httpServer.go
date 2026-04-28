@@ -19,7 +19,6 @@ func NewHttpServer(svc *service.RegistrationService) *HttpServer {
 
 func (h *HttpServer) Register(w http.ResponseWriter, r *http.Request) {
 	var req dto.RegisterRequest
-	fmt.Println("REGISTER HIT")
 	ctx := r.Context()
 	log := logger.From(ctx)
 
@@ -48,6 +47,29 @@ func (h *HttpServer) Register(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *HttpServer) ResendCode(w http.ResponseWriter, r *http.Request) {
+	var req dto.ResendCodeRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+
+	input := service.ResendInput{
+		RegistrationID: req.RegistrationID,
+	}
+
+	err := h.svc.ResendCode(r.Context(), input)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, dto.Response{
+		Status: "resended",
+	})
+}
+
 func (h *HttpServer) Verify(w http.ResponseWriter, r *http.Request) {
 	var req dto.VerifyRequest
 
@@ -69,6 +91,60 @@ func (h *HttpServer) Verify(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, dto.Response{
 		Status: "verified",
+	})
+}
+
+func (h *HttpServer) PasswordRecovery(w http.ResponseWriter, r *http.Request) {
+	var req dto.PasswordRecoveryRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+
+	if req.Email == "" {
+		writeError(w, http.StatusBadRequest, "email is required")
+		return
+	}
+
+	resp, err := h.svc.RecoverPassword(r.Context(), service.PasswordRecoveryInput{
+		Email: req.Email,
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, dto.Response{
+		Status:     resp.Status,
+		RecoveryID: resp.RecoveryID,
+	})
+}
+
+func (h *HttpServer) ConfirmPasswordRecovery(w http.ResponseWriter, r *http.Request) {
+	var req dto.PasswordRecoveryVerifyRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+
+	if req.RecoveryID == "" || req.Code == "" {
+		writeError(w, http.StatusBadRequest, "recovery_id and code are required")
+		return
+	}
+
+	err := h.svc.ConfirmPasswordRecovery(r.Context(), service.PasswordRecoveryVerifyInput{
+		RecoveryID: req.RecoveryID,
+		Code:       req.Code,
+	})
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, dto.Response{
+		Status: "password_recovery_completed",
 	})
 }
 
