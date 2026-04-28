@@ -5,13 +5,11 @@ import (
 	"Online-queue-management-system/services/auth/internal/application/service"
 	"Online-queue-management-system/services/auth/internal/domain"
 	jwtmanager "Online-queue-management-system/services/auth/internal/infrastructure/jwt"
+	"Online-queue-management-system/services/auth/internal/mocks"
 	"bytes"
-	"context"
 	"encoding/json"
-	"errors"
 	stdhttp "net/http"
 	"net/http/httptest"
-	"strconv"
 	"testing"
 	"time"
 
@@ -58,8 +56,8 @@ func TestHandleLogin_WhenRequestIsInvalid_ShouldReturnBadRequest(t *testing.T) {
 
 func TestHandleRefresh_WhenSessionExists_ShouldRotateCookies(t *testing.T) {
 	handler, deps := newTestHandler()
-	deps.tokens.refreshClaims["old-refresh-token"] = domain.RefreshClaims{UserID: 42, JTI: "old-jti"}
-	deps.sessions.exists["old-jti:42"] = true
+	deps.tokens.RefreshClaims["old-refresh-token"] = domain.RefreshClaims{UserID: 42, JTI: "old-jti"}
+	deps.sessions.Exists["old-jti:42"] = true
 
 	req := httptest.NewRequest(stdhttp.MethodPost, "/auth/refresh", nil)
 	req.AddCookie(&stdhttp.Cookie{Name: "refresh_token", Value: "old-refresh-token"})
@@ -70,7 +68,7 @@ func TestHandleRefresh_WhenSessionExists_ShouldRotateCookies(t *testing.T) {
 	assertMessageResponse(t, rec, stdhttp.StatusOK, "ok")
 	assertCookie(t, rec, "access_token", "access-owner@example.com", "/")
 	assertCookie(t, rec, "refresh_token", "refresh-owner@example.com", "/auth")
-	if !deps.sessions.deleted["old-jti"] {
+	if !deps.sessions.Deleted["old-jti"] {
 		t.Fatal("expected old refresh session to be deleted")
 	}
 }
@@ -87,7 +85,7 @@ func TestHandleRefresh_WhenCookieIsMissing_ShouldReturnUnauthorized(t *testing.T
 
 func TestHandleLogout_WhenRefreshCookieExists_ShouldDeleteSessionAndClearCookies(t *testing.T) {
 	handler, deps := newTestHandler()
-	deps.tokens.refreshClaims["refresh-token"] = domain.RefreshClaims{UserID: 42, JTI: "refresh-jti"}
+	deps.tokens.RefreshClaims["refresh-token"] = domain.RefreshClaims{UserID: 42, JTI: "refresh-jti"}
 	req := httptest.NewRequest(stdhttp.MethodPost, "/auth/logout", nil)
 	req.AddCookie(&stdhttp.Cookie{Name: "refresh_token", Value: "refresh-token"})
 	rec := httptest.NewRecorder()
@@ -97,7 +95,7 @@ func TestHandleLogout_WhenRefreshCookieExists_ShouldDeleteSessionAndClearCookies
 	assertMessageResponse(t, rec, stdhttp.StatusOK, "ok")
 	assertClearedCookie(t, rec, "access_token")
 	assertClearedCookie(t, rec, "refresh_token")
-	if !deps.sessions.deleted["refresh-jti"] {
+	if !deps.sessions.Deleted["refresh-jti"] {
 		t.Fatal("expected refresh session to be deleted")
 	}
 }
@@ -154,18 +152,18 @@ func TestRegister_WhenMuxReceivesLoginRequest_ShouldRouteToLoginHandler(t *testi
 }
 
 func newTestHandler() (*Handler, *handlerDeps) {
-	users := newFakeUserRepository()
-	sessions := newFakeSessionRepository()
-	tokens := newFakeTokenManager()
+	users := mocks.NewUserRepository()
+	sessions := mocks.NewSessionRepository()
+	tokens := mocks.NewTokenManager()
 
-	users.byLogin["owner@example.com"] = domain.User{
+	users.ByLogin["owner@example.com"] = domain.User{
 		ID:           42,
 		Login:        "owner@example.com",
 		PasswordHash: hashPasswordForHandlerTest(),
 		RoleID:       2,
 		BusinessID:   7,
 	}
-	users.byID[42] = users.byLogin["owner@example.com"]
+	users.ByID[42] = users.ByLogin["owner@example.com"]
 
 	authService := service.New(users, sessions, tokens)
 	handler := NewHandler(
@@ -184,9 +182,9 @@ func newTestHandler() (*Handler, *handlerDeps) {
 }
 
 type handlerDeps struct {
-	users    *fakeUserRepository
-	sessions *fakeSessionRepository
-	tokens   *fakeTokenManager
+	users    *mocks.UserRepository
+	sessions *mocks.SessionRepository
+	tokens   *mocks.TokenManager
 }
 
 func assertMessageResponse(t *testing.T, rec *httptest.ResponseRecorder, expectedStatus int, expectedMessage string) {
@@ -253,113 +251,4 @@ func hashPasswordForHandlerTest() string {
 		panic(err)
 	}
 	return string(hash)
-}
-
-type fakeUserRepository struct {
-	byLogin map[string]domain.User
-	byID    map[int64]domain.User
-	err     error
-}
-
-func newFakeUserRepository() *fakeUserRepository {
-	return &fakeUserRepository{
-		byLogin: make(map[string]domain.User),
-		byID:    make(map[int64]domain.User),
-	}
-}
-
-func (r *fakeUserRepository) GetByLogin(_ context.Context, login string) (*domain.User, error) {
-	if r.err != nil {
-		return nil, r.err
-	}
-	user, ok := r.byLogin[login]
-	if !ok {
-		return nil, errors.New("user not found")
-	}
-	return &user, nil
-}
-
-func (r *fakeUserRepository) GetByID(_ context.Context, id int64) (*domain.User, error) {
-	if r.err != nil {
-		return nil, r.err
-	}
-	user, ok := r.byID[id]
-	if !ok {
-		return nil, errors.New("user not found")
-	}
-	return &user, nil
-}
-
-type fakeSessionRepository struct {
-	exists  map[string]bool
-	deleted map[string]bool
-	err     error
-}
-
-func newFakeSessionRepository() *fakeSessionRepository {
-	return &fakeSessionRepository{
-		exists:  make(map[string]bool),
-		deleted: make(map[string]bool),
-	}
-}
-
-func (r *fakeSessionRepository) SaveRefreshSession(_ context.Context, jti string, userID int64) error {
-	if r.err != nil {
-		return r.err
-	}
-	r.exists[sessionKey(jti, userID)] = true
-	return nil
-}
-
-func (r *fakeSessionRepository) RefreshSessionExists(_ context.Context, jti string, userID int64) (bool, error) {
-	if r.err != nil {
-		return false, r.err
-	}
-	return r.exists[sessionKey(jti, userID)], nil
-}
-
-func (r *fakeSessionRepository) DeleteRefreshSession(_ context.Context, jti string) error {
-	if r.err != nil {
-		return r.err
-	}
-	r.deleted[jti] = true
-	return nil
-}
-
-func sessionKey(jti string, userID int64) string {
-	return jti + ":" + strconv.FormatInt(userID, 10)
-}
-
-type fakeTokenManager struct {
-	refreshClaims map[string]domain.RefreshClaims
-	err           error
-}
-
-func newFakeTokenManager() *fakeTokenManager {
-	return &fakeTokenManager{refreshClaims: make(map[string]domain.RefreshClaims)}
-}
-
-func (m *fakeTokenManager) NewAccessToken(user *domain.User) (string, error) {
-	if m.err != nil {
-		return "", m.err
-	}
-	return "access-" + user.Login, nil
-}
-
-func (m *fakeTokenManager) NewRefreshToken(user *domain.User) (string, string, error) {
-	if m.err != nil {
-		return "", "", m.err
-	}
-	return "refresh-" + user.Login, "jti-" + user.Login, nil
-}
-
-func (m *fakeTokenManager) ParseRefreshToken(token string) (*domain.RefreshClaims, error) {
-	if m.err != nil {
-		return nil, m.err
-	}
-	claims, ok := m.refreshClaims[token]
-	if !ok {
-		return nil, errors.New("invalid token")
-	}
-	return &claims, nil
 }
