@@ -11,7 +11,7 @@ linters:
     - revive
     - gocritic
 
-linters-settings:
+settings:
   gocritic:
     enabled-tags:
       - performance
