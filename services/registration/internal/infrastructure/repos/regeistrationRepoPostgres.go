@@ -1,6 +1,7 @@
 package repos
 
 import (
+	"Online-queue-management-system/services/registration/internal/domain"
 	"Online-queue-management-system/services/registration/internal/domain/pending"
 	"context"
 	"database/sql"
@@ -55,12 +56,23 @@ func (r *RegistrationRepoPostgres) CreateUserWithBusiness(ctx context.Context, p
 	}
 
 	// 3. создать пользователя
-	_, err = tx.ExecContext(ctx, `
-		INSERT INTO users (login, password_hash, role_id, business_id)
-		VALUES ($1, $2, $3, $4)
-	`, p.Email, p.PasswordHash, roleID, businessID)
+	result, err := tx.ExecContext(ctx, `
+    INSERT INTO users (login, password_hash, role_id, business_id)
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT (login) DO NOTHING
+`, p.Email, p.PasswordHash, roleID, businessID)
+
 	if err != nil {
 		return fmt.Errorf("insert user: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
+
+	if rows == 0 {
+		return domain.ErrUserAlreadyExists
 	}
 
 	return tx.Commit()
