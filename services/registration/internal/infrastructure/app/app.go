@@ -39,7 +39,7 @@ func NewApp(ctx context.Context, cfg config.Config, dbCfg config.DBConfig) (*App
 	}
 	emailSender := email.NewEmailSender(cfg.EmailSenderCfg)
 	emailQueue := email.NewEmailQueue(emailSender, cfg.QueueCfg)
-	svc := service.NewRegistrationService(repoRedis, repoRedis, repoPostgres, emailQueue)
+	svc := service.NewRegistrationService(repoRedis, repoRedis, repoPostgres, emailQueue, cfg.AppEnv)
 
 	serverImpl := httpserver.NewHttpServer(svc)
 	mux := http.NewServeMux()
@@ -77,7 +77,6 @@ func (a *App) Run(ctx context.Context) error {
 
 	errCh := make(chan error, 1)
 
-	// запускаем сервер
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {

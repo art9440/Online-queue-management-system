@@ -18,7 +18,7 @@ func TestRegister_WhenUserDoesNotExist_ShouldSavePendingRegistrationAndQueueEmai
 	recoveryRepo := mocks.NewRecoveryRepo()
 	userRepo := mocks.NewUserRepo()
 	queue := mocks.NewTestEmailQueue()
-	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue)
+	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue, "")
 
 	output, err := svc.Register(ctx, RegisterInput{
 		Email:        "owner@example.com",
@@ -63,7 +63,7 @@ func TestRegister_WhenUserAlreadyExists_ShouldReturnErrorWithoutSavingPendingReg
 	userRepo := mocks.NewUserRepo()
 	userRepo.ExistingEmails["owner@example.com"] = true
 	queue := mocks.NewTestEmailQueue()
-	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue)
+	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue, "")
 
 	_, err := svc.Register(ctx, RegisterInput{
 		Email:        "owner@example.com",
@@ -89,7 +89,7 @@ func TestVerify_WhenCodeMatches_ShouldCreateUserWithBusinessAndDeletePendingRegi
 	recoveryRepo := mocks.NewRecoveryRepo()
 	userRepo := mocks.NewUserRepo()
 	queue := mocks.NewTestEmailQueue()
-	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue)
+	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue, "")
 
 	pendingRepo.Items["registration-1"] = pending.PendingRegistration{
 		ID:           "registration-1",
@@ -122,7 +122,7 @@ func TestVerify_WhenSlugCollides_ShouldRetryCreateUserWithBusiness(t *testing.T)
 	userRepo := mocks.NewUserRepo()
 	userRepo.CreateErrors = []error{mocks.UniqueViolation("businesses_registration_slug_uindex"), nil}
 	queue := mocks.NewTestEmailQueue()
-	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue)
+	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue, "")
 
 	pendingRepo.Items["registration-1"] = pending.PendingRegistration{
 		ID:    "registration-1",
@@ -144,7 +144,7 @@ func TestVerify_WhenCodeDoesNotMatch_ShouldReturnErrorWithoutCreatingUser(t *tes
 	recoveryRepo := mocks.NewRecoveryRepo()
 	userRepo := mocks.NewUserRepo()
 	queue := mocks.NewTestEmailQueue()
-	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue)
+	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue, "")
 
 	pendingRepo.Items["registration-1"] = pending.PendingRegistration{
 		ID:    "registration-1",
@@ -170,7 +170,7 @@ func TestResendCode_WhenPendingRegistrationExists_ShouldQueueEmail(t *testing.T)
 	recoveryRepo := mocks.NewRecoveryRepo()
 	userRepo := mocks.NewUserRepo()
 	queue := mocks.NewTestEmailQueue()
-	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue)
+	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue, "")
 
 	pendingRepo.Items["registration-1"] = pending.PendingRegistration{
 		ID:    "registration-1",
@@ -191,7 +191,7 @@ func TestRecoverPassword_WhenUserExists_ShouldSaveRecoveryAndQueueEmail(t *testi
 	userRepo := mocks.NewUserRepo()
 	userRepo.ExistingEmails["owner@example.com"] = true
 	queue := mocks.NewTestEmailQueue()
-	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue)
+	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue, "")
 
 	output, err := svc.RecoverPassword(ctx, PasswordRecoveryInput{Email: "owner@example.com"})
 	if err != nil {
@@ -213,7 +213,7 @@ func TestRecoverPassword_WhenUserDoesNotExist_ShouldReturnPendingStatusWithoutSa
 	recoveryRepo := mocks.NewRecoveryRepo()
 	userRepo := mocks.NewUserRepo()
 	queue := mocks.NewTestEmailQueue()
-	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue)
+	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue, "")
 
 	output, err := svc.RecoverPassword(ctx, PasswordRecoveryInput{Email: "missing@example.com"})
 	if err != nil {
@@ -238,7 +238,7 @@ func TestConfirmPasswordRecovery_WhenCodeMatches_ShouldUpdatePasswordQueueEmailA
 	recoveryRepo := mocks.NewRecoveryRepo()
 	userRepo := mocks.NewUserRepo()
 	queue := mocks.NewTestEmailQueue()
-	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue)
+	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue, "")
 
 	recoveryRepo.Items["recovery-1"] = recovery.PasswordRecovery{
 		ID:    "recovery-1",
@@ -270,7 +270,7 @@ func TestConfirmPasswordRecovery_WhenCodeDoesNotMatch_ShouldReturnErrorWithoutUp
 	recoveryRepo := mocks.NewRecoveryRepo()
 	userRepo := mocks.NewUserRepo()
 	queue := mocks.NewTestEmailQueue()
-	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue)
+	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue, "")
 
 	recoveryRepo.Items["recovery-1"] = recovery.PasswordRecovery{
 		ID:    "recovery-1",
