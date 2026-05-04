@@ -72,10 +72,37 @@ jobs:
           wget https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-5.6.3.tgz
           tar -xzf apache-jmeter-5.6.3.tgz
           mv apache-jmeter-5.6.3 jmeter
+        
+      - name: Create CI env file
+        run: |
+          cat > .env <<EOF
+          APP_ENV=test
+
+          POSTGRES_USER=postgres
+          POSTGRES_PASSWORD=postgres
+          POSTGRES_DB=online_queue_db
+          POSTGRES_HOST=postgres
+          POSTGRES_PORT=5432
+
+          REDIS_HOST=redis
+          REDIS_PORT=6379
+          REDIS_PASSWORD=redis_password
+
+          JWT_ACCESS_SECRET=test_access_secret
+          JWT_REFRESH_SECRET=test_refresh_secret
+
+          COOKIE_SECURE=false
+
+          SMTP_HOST=localhost
+          SMTP_PORT=1025
+          SMTP_USERNAME=test
+          SMTP_PASSWORD=test
+          SMTP_FROM=test@example.com
+          EOF
 
       - name: Start services
         run: |
-          APP_ENV=test docker compose up -d --build
+          docker compose up -d --build
 
       - name: Wait for registration service
         run: |
