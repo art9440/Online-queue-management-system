@@ -29,9 +29,6 @@ func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg libconfig.DBCo
 		log.Error("error creating branches repo", "err", err)
 		return nil, err
 	}
-	_ = repoRedis
-	_ = repoPostgres
-
 	svc := service.New(repoPostgres)
 
 	serverImpl := httpserver.NewHttpServer(svc)
