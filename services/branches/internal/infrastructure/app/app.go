@@ -1,6 +1,7 @@
 package app
 
 import (
+	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/auth"
 	"Online-queue-management-system/libs/logger"
 	"Online-queue-management-system/libs/middleware"
@@ -8,7 +9,6 @@ import (
 	"Online-queue-management-system/services/branches/internal/application/service"
 	httpserver "Online-queue-management-system/services/branches/internal/infrastructure/httpServer"
 	"Online-queue-management-system/services/branches/internal/infrastructure/repos"
-	"Online-queue-management-system/services/registration/config"
 	"context"
 	"errors"
 	"net"
@@ -21,7 +21,7 @@ type BranchesApp struct {
 	httpServer *http.Server
 }
 
-func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg config.DBConfig) (*BranchesApp, error) {
+func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg libconfig.DBConfig) (*BranchesApp, error) {
 	log := logger.From(ctx)
 
 	repoPostgres, err := repos.NewBranchesRepoPostgres(dbCfg.DSN)
@@ -29,7 +29,6 @@ func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg config.DBConfi
 		log.Error("error creating branches repo", "err", err)
 		return nil, err
 	}
-
 	svc := service.New(repoPostgres)
 
 	serverImpl := httpserver.NewHttpServer(svc)
