@@ -44,11 +44,7 @@ func GetInt(ctx context.Context, key string) (int, error) {
 
 	i, err := strconv.Atoi(val)
 	if err != nil {
-<<<<<<< HEAD
-		log.Error("env must be int", "key", key, "value", val)
-=======
 		log.Error("env must be int", "key", key, "value", val, "err", err)
->>>>>>> 6a31fe1 (fixed loader.go)
 		return 0, err
 	}
 
@@ -65,11 +61,7 @@ func GetIntDefault(ctx context.Context, key string, defaultVal int) int {
 
 	i, err := strconv.Atoi(val)
 	if err != nil {
-<<<<<<< HEAD
-		log.Error("env must be int", "key", key, "value", val)
-=======
 		log.Error("env must be int, using default value", "key", key, "value", val, "default", defaultVal, "err", err)
->>>>>>> 6a31fe1 (fixed loader.go)
 		return defaultVal
 	}
 
@@ -87,11 +79,7 @@ func GetDuration(ctx context.Context, key string) (time.Duration, error) {
 
 	d, err := time.ParseDuration(val)
 	if err != nil {
-<<<<<<< HEAD
-		log.Error("env must be duration", "key", key, "value", val)
-=======
 		log.Error("env must be duration", "key", key, "value", val, "err", err)
->>>>>>> 6a31fe1 (fixed loader.go)
 		return 0, err
 	}
 
@@ -108,11 +96,7 @@ func GetDurationDefault(ctx context.Context, key string, defaultVal time.Duratio
 
 	d, err := time.ParseDuration(val)
 	if err != nil {
-<<<<<<< HEAD
-		log.Error("env must be duration", "key", key, "value", val)
-=======
 		log.Error("env must be duration, using default value", "key", key, "value", val, "default", defaultVal, "err", err)
->>>>>>> 6a31fe1 (fixed loader.go)
 		return defaultVal
 	}
 
@@ -129,11 +113,7 @@ func GetBool(ctx context.Context, key string, defaultVal bool) (bool, error) {
 
 	b, err := strconv.ParseBool(val)
 	if err != nil {
-<<<<<<< HEAD
-		log.Error("env must be bool", "key", key, "value", val)
-=======
 		log.Error("env must be bool", "key", key, "value", val, "err", err)
->>>>>>> 6a31fe1 (fixed loader.go)
 		return defaultVal, err
 	}
 
