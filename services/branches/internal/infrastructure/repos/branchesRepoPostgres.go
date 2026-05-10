@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	_ "github.com/lib/pq"
 )
@@ -81,4 +82,51 @@ func (r *BranchesRepoPostgres) GetByID(ctx context.Context, branchID int64) ([]d
 	}
 
 	return []domain.Branch{b}, nil
+}
+
+func (r *BranchesRepoPostgres) GetEmployeesByBranchID(
+	ctx context.Context,
+	branchID int64,
+) ([]domain.Employee, error) {
+	const query = `
+		SELECT
+			id,
+			branch_id,
+			name,
+			surname,
+			position
+		FROM employees
+		WHERE branch_id = $1
+		ORDER BY id
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, branchID)
+	if err != nil {
+		return nil, fmt.Errorf("query employees by branch id: %w", err)
+	}
+	defer rows.Close()
+
+	employees := make([]domain.Employee, 0)
+
+	for rows.Next() {
+		var employee domain.Employee
+
+		if err := rows.Scan(
+			&employee.ID,
+			&employee.BranchID,
+			&employee.Name,
+			&employee.Surname,
+			&employee.Position,
+		); err != nil {
+			return nil, fmt.Errorf("scan employee: %w", err)
+		}
+
+		employees = append(employees, employee)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate employees rows: %w", err)
+	}
+
+	return employees, nil
 }
