@@ -39,6 +39,8 @@ func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg libconfig.DBCo
 	authMiddleware := auth.Middleware(parser)
 
 	mux.Handle("/branches", authMiddleware(http.HandlerFunc(serverImpl.GetBranches)))
+	mux.Handle("/branches/{id}/employees",
+		authMiddleware(http.HandlerFunc(serverImpl.GetBranchEmployees)))
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
