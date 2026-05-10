@@ -90,6 +90,18 @@ services:
     env_file:
       - .env
 
+  booking:
+    build:
+      context: .
+      dockerfile: ./services/booking/booking.Dockerfile
+    container_name: online_queue_booking
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "8084:8084"
+    env_file:
+      - .env
 
 volumes:
   postgres_data:
