@@ -4,7 +4,7 @@ import (
 	sharedauth "Online-queue-management-system/libs/auth"
 	"Online-queue-management-system/services/branches/internal/application/service"
 	branchesdomain "Online-queue-management-system/services/branches/internal/domain"
-	"context"
+	"Online-queue-management-system/services/branches/internal/mocks"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -34,13 +34,13 @@ func TestGetBranches_WhenUserIsMissingFromContext_ShouldReturnUnauthorized(t *te
 
 func TestGetBranches_WhenBusinessAdminIsAuthorized_ShouldReturnBusinessBranches(t *testing.T) {
 	server, repo := newTestHTTPServer()
-	repo.byBusinessID[7] = []branchesdomain.Branch{
+	repo.ByBusinessID[7] = []branchesdomain.Branch{
 		{ID: 1, BusinessID: 7, Name: "Central", Address: "Main street"},
 		{ID: 2, BusinessID: 7, Name: "Left Bank", Address: "Second street"},
 	}
 
-	rec := serveAuthenticatedBranchesRequest(t, server, accessTokenClaims{
-		ID:         42,
+	rec := serveAuthenticatedBranchesRequest(t, server, sharedauth.AccessClaims{
+		UserID:     42,
 		Login:      "owner@example.com",
 		RoleID:     2,
 		RoleName:   string(branchesdomain.RoleBusinessAdmin),
@@ -56,20 +56,20 @@ func TestGetBranches_WhenBusinessAdminIsAuthorized_ShouldReturnBusinessBranches(
 	if len(body) != 2 {
 		t.Fatalf("expected 2 branches, got %d", len(body))
 	}
-	if repo.lastBusinessID != 7 {
-		t.Fatalf("expected business id 7, got %d", repo.lastBusinessID)
+	if repo.LastBusinessID != 7 {
+		t.Fatalf("expected business id 7, got %d", repo.LastBusinessID)
 	}
 }
 
 func TestGetBranches_WhenManagerIsAuthorized_ShouldReturnManagerBranch(t *testing.T) {
 	server, repo := newTestHTTPServer()
 	branchID := int64(11)
-	repo.byID[branchID] = []branchesdomain.Branch{
+	repo.ByID[branchID] = []branchesdomain.Branch{
 		{ID: branchID, BusinessID: 7, Name: "Central", Address: "Main street"},
 	}
 
-	rec := serveAuthenticatedBranchesRequest(t, server, accessTokenClaims{
-		ID:         43,
+	rec := serveAuthenticatedBranchesRequest(t, server, sharedauth.AccessClaims{
+		UserID:     43,
 		Login:      "manager@example.com",
 		RoleID:     3,
 		RoleName:   string(branchesdomain.RoleManager),
@@ -86,16 +86,16 @@ func TestGetBranches_WhenManagerIsAuthorized_ShouldReturnManagerBranch(t *testin
 	if len(body) != 1 || body[0].ID != branchID {
 		t.Fatalf("unexpected branches response: %#v", body)
 	}
-	if repo.lastBranchID != branchID {
-		t.Fatalf("expected branch id %d, got %d", branchID, repo.lastBranchID)
+	if repo.LastBranchID != branchID {
+		t.Fatalf("expected branch id %d, got %d", branchID, repo.LastBranchID)
 	}
 }
 
 func TestGetBranches_WhenRoleIsForbidden_ShouldReturnInternalServerErrorWithForbiddenBody(t *testing.T) {
 	server, _ := newTestHTTPServer()
 
-	rec := serveAuthenticatedBranchesRequest(t, server, accessTokenClaims{
-		ID:         44,
+	rec := serveAuthenticatedBranchesRequest(t, server, sharedauth.AccessClaims{
+		UserID:     44,
 		Login:      "employee@example.com",
 		RoleID:     4,
 		RoleName:   string(branchesdomain.RoleEmployee),
@@ -110,7 +110,7 @@ func TestGetBranches_WhenRoleIsForbidden_ShouldReturnInternalServerErrorWithForb
 	}
 }
 
-func serveAuthenticatedBranchesRequest(t *testing.T, server *HttpServer, claims accessTokenClaims) *httptest.ResponseRecorder {
+func serveAuthenticatedBranchesRequest(t *testing.T, server *HttpServer, claims sharedauth.AccessClaims) *httptest.ResponseRecorder {
 	t.Helper()
 
 	accessToken := signAccessToken(t, claims)
@@ -124,40 +124,19 @@ func serveAuthenticatedBranchesRequest(t *testing.T, server *HttpServer, claims 
 	return rec
 }
 
-type accessTokenClaims struct {
-	ID         int64
-	Login      string
-	RoleID     int64
-	RoleName   string
-	BusinessID int64
-	BranchID   *int64
-}
-
-type accessClaimsDTO struct {
-	UserID     int64  `json:"user_id"`
-	Login      string `json:"login"`
-	RoleID     int64  `json:"role_id"`
-	RoleName   string `json:"role_name,omitempty"`
-	BusinessID int64  `json:"business_id"`
-	BranchID   *int64 `json:"branch_id,omitempty"`
-	jwt.RegisteredClaims
-}
-
-func signAccessToken(t *testing.T, claims accessTokenClaims) string {
+func signAccessToken(t *testing.T, claims sharedauth.AccessClaims) string {
 	t.Helper()
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaimsDTO{
-		UserID:     claims.ID,
-		Login:      claims.Login,
-		RoleID:     claims.RoleID,
-		RoleName:   claims.RoleName,
-		BusinessID: claims.BusinessID,
-		BranchID:   claims.BranchID,
-		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   strconv.FormatInt(claims.ID, 10),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
-		},
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id":     claims.UserID,
+		"login":       claims.Login,
+		"role_id":     claims.RoleID,
+		"role_name":   claims.RoleName,
+		"business_id": claims.BusinessID,
+		"branch_id":   claims.BranchID,
+		"sub":         strconv.FormatInt(claims.UserID, 10),
+		"iat":         jwt.NewNumericDate(time.Now()).Unix(),
+		"exp":         jwt.NewNumericDate(time.Now().Add(time.Hour)).Unix(),
 	})
 	signed, err := token.SignedString([]byte("branches-access-secret"))
 	if err != nil {
@@ -166,8 +145,8 @@ func signAccessToken(t *testing.T, claims accessTokenClaims) string {
 	return signed
 }
 
-func newTestHTTPServer() (*HttpServer, *fakeBranchesRepository) {
-	repo := newFakeBranchesRepository()
+func newTestHTTPServer() (*HttpServer, *mocks.BranchesRepository) {
+	repo := mocks.NewBranchesRepository()
 	svc := service.New(repo)
 	return NewHttpServer(svc), repo
 }
@@ -180,51 +159,12 @@ func decodeJSON(t *testing.T, rec *httptest.ResponseRecorder, target any) {
 	}
 }
 
-type fakeBranchesRepository struct {
-	byBusinessID    map[int64][]branchesdomain.Branch
-	byID            map[int64][]branchesdomain.Branch
-	lastBusinessID  int64
-	lastBranchID    int64
-	businessIDCalls int
-	idCalls         int
-	err             error
-}
-
-func newFakeBranchesRepository() *fakeBranchesRepository {
-	return &fakeBranchesRepository{
-		byBusinessID: make(map[int64][]branchesdomain.Branch),
-		byID:         make(map[int64][]branchesdomain.Branch),
-	}
-}
-
-func (r *fakeBranchesRepository) GetByBusinessID(_ context.Context, businessID int64) ([]branchesdomain.Branch, error) {
-	r.businessIDCalls++
-	r.lastBusinessID = businessID
-	if r.err != nil {
-		return nil, r.err
-	}
-	return r.byBusinessID[businessID], nil
-}
-
-func (r *fakeBranchesRepository) GetByID(_ context.Context, branchID int64) ([]branchesdomain.Branch, error) {
-	r.idCalls++
-	r.lastBranchID = branchID
-	if r.err != nil {
-		return nil, r.err
-	}
-	branches, ok := r.byID[branchID]
-	if !ok {
-		return nil, branchesdomain.ErrBranchNotFound
-	}
-	return branches, nil
-}
-
 func TestGetBranches_WhenRepositoryFails_ShouldReturnInternalServerError(t *testing.T) {
 	server, repo := newTestHTTPServer()
-	repo.err = errors.New("db failed")
+	repo.Err = errors.New("db failed")
 
-	rec := serveAuthenticatedBranchesRequest(t, server, accessTokenClaims{
-		ID:         42,
+	rec := serveAuthenticatedBranchesRequest(t, server, sharedauth.AccessClaims{
+		UserID:     42,
 		Login:      "owner@example.com",
 		RoleID:     2,
 		RoleName:   string(branchesdomain.RoleBusinessAdmin),
