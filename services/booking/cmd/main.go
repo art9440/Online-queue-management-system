@@ -41,7 +41,7 @@ func run(ctx context.Context) error {
 		return err
 	}
 
-	dbCfg, err := .LoadDBConfig(ctx)
+	dbCfg, err := config.LoadDBConfig(ctx)
 	if err != nil {
 		log.Error("error loading db config", "err", err)
 		return err
