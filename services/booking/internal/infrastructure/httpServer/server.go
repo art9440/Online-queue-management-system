@@ -156,9 +156,13 @@ func stringPtrValue(value *string) string {
 
 func (s *HttpServer) GetAppointmentsByEmployeeID(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	log := logger.From(ctx)
+
+	log.Info("get appointments by employee id request started")
 
 	user := auth.FromContext(ctx)
 	if user == nil {
+		log.Warn("unauthorized get appointments by employee id request")
 		http.Error(w, liberrors.ErrUnauthorized.Error(), http.StatusUnauthorized)
 		return
 	}
@@ -167,19 +171,47 @@ func (s *HttpServer) GetAppointmentsByEmployeeID(w http.ResponseWriter, r *http.
 
 	employeeID, err := strconv.ParseInt(employeeIDStr, 10, 64)
 	if err != nil || employeeID <= 0 {
+		log.Warn(
+			"invalid employee id",
+			"employee_id_raw", employeeIDStr,
+			"err", err,
+		)
+
 		http.Error(w, liberrors.ErrInvalidEmployeeID.Error(), http.StatusBadRequest)
 		return
 	}
 
+	log.Info(
+		"getting appointments by employee id",
+		"user_id", user.UserID,
+		"role_id", user.RoleID,
+		"role_name", user.RoleName,
+		"business_id", user.BusinessID,
+		"employee_id", employeeID,
+	)
+
 	appointments, err := s.svc.GetAppointmentsByEmployeeID(ctx, user, employeeID)
 	if err != nil {
+		log.Error(
+			"failed to get appointments by employee id",
+			"user_id", user.UserID,
+			"role_id", user.RoleID,
+			"role_name", user.RoleName,
+			"business_id", user.BusinessID,
+			"employee_id", employeeID,
+			"err", err,
+		)
+
 		switch {
 		case errors.Is(err, liberrors.ErrUnauthorized):
 			http.Error(w, err.Error(), http.StatusUnauthorized)
+
 		case errors.Is(err, liberrors.ErrForbidden):
 			http.Error(w, err.Error(), http.StatusForbidden)
+
 		case errors.Is(err, liberrors.ErrInvalidEmployeeID):
 			http.Error(w, err.Error(), http.StatusBadRequest)
+
 		default:
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -187,7 +219,17 @@ func (s *HttpServer) GetAppointmentsByEmployeeID(w http.ResponseWriter, r *http.
 		return
 	}
 
-	writeJSON(w, http.StatusOK, dto.AppointmentsFromDomain(appointments))
+	response := dto.AppointmentsFromDomain(appointments)
+
+	log.Info(
+		"appointments by employee id successfully received",
+		"user_id", user.UserID,
+		"business_id", user.BusinessID,
+		"employee_id", employeeID,
+		"appointments_count", len(response),
+	)
+
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (s *HttpServer) GetAppointmentByID(w http.ResponseWriter, r *http.Request) {
