@@ -16,12 +16,12 @@ func New(repoPostgres BranchesRepository) *BranchesService {
 
 func (s *BranchesService) GetBranchesForUser(ctx context.Context, user *auth.AccessClaims) ([]domain.Branch, error) {
 
-	switch domain.Role(user.RoleName) {
+	switch auth.Role(user.RoleName) {
 
-	case domain.RoleBusinessAdmin:
+	case auth.RoleBusinessAdmin:
 		return s.repoPostgres.GetByBusinessID(ctx, user.BusinessID)
 
-	case domain.RoleManager:
+	case auth.RoleManager:
 		if user.BranchID == nil {
 			return nil, domain.ErrBranchNotFound
 		}
@@ -45,8 +45,8 @@ func (s *BranchesService) GetEmployeesForBranch(
 		return nil, domain.ErrInvalidBranchID
 	}
 
-	switch domain.Role(user.RoleName) {
-	case domain.RoleBusinessAdmin:
+	switch auth.Role(user.RoleName) {
+	case auth.RoleBusinessAdmin:
 		branch, err := s.repoPostgres.GetByID(ctx, branchID)
 		if err != nil {
 			return nil, err
@@ -62,7 +62,7 @@ func (s *BranchesService) GetEmployeesForBranch(
 
 		return s.repoPostgres.GetEmployeesByBranchID(ctx, branchID)
 
-	case domain.RoleManager:
+	case auth.RoleManager:
 		if user.BranchID == nil {
 			return nil, domain.ErrForbidden
 		}

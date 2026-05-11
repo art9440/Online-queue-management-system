@@ -16,6 +16,6 @@ WORKDIR /app
 
 COPY --from=builder /app/booking /app/booking
 
-EXPOSE 8083
+EXPOSE 8084
 
 CMD ["/app/booking"]

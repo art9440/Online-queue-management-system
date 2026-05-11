@@ -26,7 +26,7 @@ func main() {
 	ctx = logger.With(ctx, log)
 
 	if err := run(ctx); err != nil {
-		slog.Error("something went wrong while running branches service", "err", err)
+		slog.Error("something went wrong while running booking service", "err", err)
 		stop()
 		os.Exit(1)
 	}
@@ -50,12 +50,12 @@ func run(ctx context.Context) error {
 
 	app, err := app.NewApp(ctx, *cfg, *dbCfg)
 	if err != nil {
-		log.Error("error creating branches app", "err", err)
+		log.Error("error creating booking app", "err", err)
 		return err
 	}
 
 	if err := app.Run(ctx); err != nil {
-		log.Error("error starting branches service", "err", err)
+		log.Error("error starting booking service", "err", err)
 		return err
 	}
 
