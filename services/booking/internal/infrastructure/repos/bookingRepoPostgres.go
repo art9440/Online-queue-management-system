@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 )
 
 type BookingRepoPostgres struct {
@@ -259,6 +259,13 @@ func (r *BookingRepoPostgres) CreateAppointment(
 	)
 
 	if err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) {
+			if pqErr.Code == "23P01" {
+				return domain.CreateAppointmentOutput{}, domain.ErrTimeSlotBusy
+			}
+		}
+
 		if errors.Is(err, sql.ErrNoRows) {
 			return domain.CreateAppointmentOutput{}, fmt.Errorf(
 				"invalid appointment data: service, employee, branch relation not found",

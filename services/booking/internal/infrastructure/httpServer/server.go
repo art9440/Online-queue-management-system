@@ -109,6 +109,9 @@ func (s *HttpServer) CreateAppointment(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, liberrors.ErrForbidden):
 			http.Error(w, err.Error(), http.StatusForbidden)
 
+		case errors.Is(err, domain.ErrTimeSlotBusy):
+			http.Error(w, err.Error(), http.StatusConflict)
+
 		case errors.Is(err, liberrors.ErrInvalidBranchID),
 			errors.Is(err, liberrors.ErrInvalidEmployeeID),
 			errors.Is(err, liberrors.ErrInvalidServiceID),
