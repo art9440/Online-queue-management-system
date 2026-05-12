@@ -156,7 +156,7 @@ func newTestServer() (*HttpServer, *testRepos) {
 		user:     mocks.NewUserRepo(),
 	}
 	queue := mocks.NewTestEmailQueue()
-	svc := service.NewRegistrationService(repos.pending, repos.recovery, repos.user, queue)
+	svc := service.NewRegistrationService(repos.pending, repos.recovery, repos.user, queue, "")
 	return NewHttpServer(svc), repos
 }
 

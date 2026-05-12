@@ -15,6 +15,7 @@ type Config struct {
 	EmailSenderCfg libconfig.EmailSenderConfig
 	QueueCfg       libconfig.QueueConfig
 	RegCfg         RegistrationConfig
+	AppEnv         string
 }
 
 func LoadConfig(ctx context.Context) (*Config, error) {
@@ -92,10 +93,13 @@ func LoadConfig(ctx context.Context) (*Config, error) {
 		WrkTimeOut: wrkTimeOut,
 	}
 
+	appEnv := libconfig.Get(ctx, "APP_ENV", "")
+
 	return &Config{
 		RedisCfg:       redisCfg,
 		RegCfg:         regCfg,
 		EmailSenderCfg: senderCfg,
 		QueueCfg:       queueCfg,
+		AppEnv:         appEnv,
 	}, err
 }

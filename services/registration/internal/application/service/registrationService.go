@@ -3,6 +3,7 @@ package service
 import (
 	"Online-queue-management-system/libs/email"
 	"Online-queue-management-system/libs/logger"
+	"Online-queue-management-system/services/registration/internal/domain"
 	"Online-queue-management-system/services/registration/internal/domain/pending"
 	"Online-queue-management-system/services/registration/internal/domain/recovery"
 	"Online-queue-management-system/services/registration/internal/infrastructure/security"
@@ -22,14 +23,16 @@ type RegistrationService struct {
 	recoveryRepo RecoveryRepo
 	repoPostgres UserRepo
 	emailQueue   *email.EmailQueue
+	AppEnv       string
 }
 
-func NewRegistrationService(repoRedis PendingRepo, recoveryRepo RecoveryRepo, repoPostgres UserRepo, queue *email.EmailQueue) *RegistrationService {
+func NewRegistrationService(repoRedis PendingRepo, recoveryRepo RecoveryRepo, repoPostgres UserRepo, queue *email.EmailQueue, appEnv string) *RegistrationService {
 	return &RegistrationService{
 		repoRedis:    repoRedis,
 		recoveryRepo: recoveryRepo,
 		repoPostgres: repoPostgres,
 		emailQueue:   queue,
+		AppEnv:       appEnv,
 	}
 }
 
@@ -37,16 +40,13 @@ func (s *RegistrationService) Register(ctx context.Context, req RegisterInput) (
 	log := logger.From(ctx)
 	log.Info("starting registration process for email", "email", req.Email)
 
-	if exists, err := s.repoPostgres.GetUserByEmail(ctx, req.Email); err != nil {
-		log.Error("error checking existing user", "email", req.Email, "err", err)
-		return RegisterOutput{}, fmt.Errorf("error checking existing user: %w", err)
-	} else if exists {
-		log.Warn("user with email already exists", "email", req.Email)
-		return RegisterOutput{}, errors.New("user with this email already exists")
-	}
-
 	registrationID := uuid.NewString()
-	code := generateCode()
+	var code string
+	if s.AppEnv == "test" {
+		code = "123456"
+	} else {
+		code = generateCode()
+	}
 
 	hash, err := security.HashPassword(req.Password)
 	if err != nil {
@@ -69,18 +69,26 @@ func (s *RegistrationService) Register(ctx context.Context, req RegisterInput) (
 	}
 	log.Info("pending registration saved", "registrationID", pendingItem.ID)
 
-	s.emailQueue.Enqueue(email.EmailMessage{
-		To:      req.Email,
-		Subject: "Код подтверждения",
-		Body:    code,
-		HTMLBody: fmt.Sprintf(`
+	if s.AppEnv != "test" {
+		s.emailQueue.Enqueue(email.EmailMessage{
+			To:      req.Email,
+			Subject: "Код подтверждения",
+			Body:    code,
+			HTMLBody: fmt.Sprintf(`
 			<h2>Подтверждение регистрации</h2>
 			<p>Ваш код подтверждения:</p>
 			<h1 style="font-size: 32px; letter-spacing: 5px;">%s</h1>
 			<p>Введите этот код для завершения регистрации.</p>
 		`, code),
-	})
-	log.Info("verification email queued", "email", req.Email, "registrationID", pendingItem.ID)
+		})
+		log.Info("verification email queued", "email", req.Email, "registrationID", pendingItem.ID)
+	} else {
+		log.Info("skip sending email in test env",
+			"email", req.Email,
+			"registrationID", pendingItem.ID,
+			"code", code,
+		)
+	}
 
 	return RegisterOutput{
 		Status:         "pending",
@@ -90,60 +98,56 @@ func (s *RegistrationService) Register(ctx context.Context, req RegisterInput) (
 
 func (s *RegistrationService) Verify(ctx context.Context, req VerifyInput) error {
 	log := logger.From(ctx)
-	log.Info("verifying registration", "registrationID", req.RegistrationID)
 
-	pendingItem, err := s.repoRedis.Get(ctx, req.RegistrationID)
+	pendingItem, err := s.repoRedis.GetAndValidate(ctx, req.RegistrationID, req.Code)
 	if err != nil {
-		log.Error("failed to get pending registration from Redis", "registrationID", req.RegistrationID, "err", err)
+		if errors.Is(err, domain.ErrNotFound) {
+			log.Info("already processed")
+			return nil
+		}
+		if errors.Is(err, domain.ErrInvalidCode) {
+			return errors.New("invalid code")
+		}
 		return err
-	}
-
-	if pendingItem.Code != req.Code {
-		log.Warn("invalid verification code", "registrationID", req.RegistrationID)
-		return errors.New("invalid code")
 	}
 
 	const maxRetries = 3
 
-	var errRet error
-	var slug string
-	for i := range maxRetries {
-		slug, errRet = generateSlug()
-		if errRet != nil {
-			return errRet
+	for i := 0; i < maxRetries; i++ {
+
+		slug, err := generateSlug()
+		if err != nil {
+			return err
 		}
 
 		pendingItem.ClientSlug = &slug
 
-		errRet = s.repoPostgres.CreateUserWithBusiness(ctx, pendingItem)
-		if errRet == nil {
-			break
+		err = s.repoPostgres.CreateUserWithBusiness(ctx, pendingItem)
+		if err == nil {
+			return nil
 		}
 
-		if isUniqueViolation(errRet, "businesses_registration_slug_uindex") {
-			log.Warn("slug collision, retrying", "attempt", i+1)
-			continue
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+
+			if pgErr.Code == "23505" {
+				switch pgErr.ConstraintName {
+
+				case "businesses_registration_slug_uindex":
+					log.Warn("slug collision, retrying", "attempt", i+1)
+					continue
+
+				case "users_login_key":
+					log.Info("user already exists → idempotent verify")
+					return nil
+				}
+			}
 		}
 
-		if isUniqueViolation(errRet, "users_login_key") {
-			log.Warn("email already exists", "email", pendingItem.Email)
-			return errors.New("user with this email already exists")
-		}
-
-		return errRet
+		return err
 	}
 
-	if errRet != nil {
-		return fmt.Errorf("failed after retries: %w", errRet)
-	}
-
-	log.Info("business_admin account is registered")
-
-	if err := s.repoRedis.Delete(ctx, req.RegistrationID); err != nil {
-		log.Warn("failed to delete pending registration from Redis", "registrationID", req.RegistrationID, "err", err)
-	}
-
-	return nil
+	return fmt.Errorf("failed after retries")
 }
 
 func (s *RegistrationService) ResendCode(ctx context.Context, req ResendInput) error {

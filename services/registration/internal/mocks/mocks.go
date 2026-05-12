@@ -3,6 +3,7 @@ package mocks
 import (
 	"Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/email"
+	"Online-queue-management-system/services/registration/internal/domain"
 	"Online-queue-management-system/services/registration/internal/domain/pending"
 	"Online-queue-management-system/services/registration/internal/domain/recovery"
 	"context"
@@ -65,6 +66,26 @@ func (r *PendingRepo) Delete(_ context.Context, registrationID string) error {
 	r.Deleted[registrationID] = true
 	delete(r.Items, registrationID)
 	return nil
+}
+
+func (r *PendingRepo) GetAndValidate(_ context.Context, registrationID string, code string) (pending.PendingRegistration, error) {
+	if r.Err != nil {
+		return pending.PendingRegistration{}, r.Err
+	}
+
+	item, ok := r.Items[registrationID]
+	if !ok {
+		return pending.PendingRegistration{}, domain.ErrNotFound
+	}
+
+	if item.Code != code {
+		return pending.PendingRegistration{}, domain.ErrInvalidCode
+	}
+
+	delete(r.Items, registrationID)
+	r.Deleted[registrationID] = true
+
+	return item, nil
 }
 
 type RecoveryRepo struct {

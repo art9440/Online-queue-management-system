@@ -18,7 +18,7 @@ func TestRegister_WhenUserDoesNotExist_ShouldSavePendingRegistrationAndQueueEmai
 	recoveryRepo := mocks.NewRecoveryRepo()
 	userRepo := mocks.NewUserRepo()
 	queue := mocks.NewTestEmailQueue()
-	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue)
+	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue, "")
 
 	output, err := svc.Register(ctx, RegisterInput{
 		Email:        "owner@example.com",
@@ -56,31 +56,46 @@ func TestRegister_WhenUserDoesNotExist_ShouldSavePendingRegistrationAndQueueEmai
 	assertQueueLen(t, queue, 1)
 }
 
-func TestRegister_WhenUserAlreadyExists_ShouldReturnErrorWithoutSavingPendingRegistration(t *testing.T) {
+func TestVerify_WhenUserAlreadyExists_ShouldReturnNilAndDeletePendingRegistration(t *testing.T) {
 	ctx := context.Background()
+
 	pendingRepo := mocks.NewPendingRepo()
 	recoveryRepo := mocks.NewRecoveryRepo()
 	userRepo := mocks.NewUserRepo()
-	userRepo.ExistingEmails["owner@example.com"] = true
 	queue := mocks.NewTestEmailQueue()
-	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue)
 
-	_, err := svc.Register(ctx, RegisterInput{
+	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue, "test")
+
+	regID := "reg-1"
+
+	pendingRepo.Items[regID] = pending.PendingRegistration{
+		ID:           regID,
 		Email:        "owner@example.com",
-		Password:     "secret-password",
+		PasswordHash: "hashed-password",
 		BusinessName: "Demo Business",
 		BusinessType: "service_company",
+		Code:         "123456",
+	}
+
+	userRepo.CreateErrors = []error{
+		mocks.UniqueViolation("users_login_key"),
+	}
+
+	err := svc.Verify(ctx, VerifyInput{
+		RegistrationID: regID,
+		Code:           "123456",
 	})
-	if err == nil {
-		t.Fatal("expected error")
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
 	}
-	if !strings.Contains(err.Error(), "already exists") {
-		t.Fatalf("expected already exists error, got %v", err)
+
+	if _, ok := pendingRepo.Items[regID]; ok {
+		t.Fatal("expected pending registration to be deleted")
 	}
-	if len(pendingRepo.Items) != 0 {
-		t.Fatalf("expected no pending registrations, got %d", len(pendingRepo.Items))
+
+	if !pendingRepo.Deleted[regID] {
+		t.Fatal("expected pending registration to be marked as deleted")
 	}
-	assertQueueLen(t, queue, 0)
 }
 
 func TestVerify_WhenCodeMatches_ShouldCreateUserWithBusinessAndDeletePendingRegistration(t *testing.T) {
@@ -89,7 +104,7 @@ func TestVerify_WhenCodeMatches_ShouldCreateUserWithBusinessAndDeletePendingRegi
 	recoveryRepo := mocks.NewRecoveryRepo()
 	userRepo := mocks.NewUserRepo()
 	queue := mocks.NewTestEmailQueue()
-	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue)
+	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue, "")
 
 	pendingRepo.Items["registration-1"] = pending.PendingRegistration{
 		ID:           "registration-1",
@@ -122,7 +137,7 @@ func TestVerify_WhenSlugCollides_ShouldRetryCreateUserWithBusiness(t *testing.T)
 	userRepo := mocks.NewUserRepo()
 	userRepo.CreateErrors = []error{mocks.UniqueViolation("businesses_registration_slug_uindex"), nil}
 	queue := mocks.NewTestEmailQueue()
-	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue)
+	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue, "")
 
 	pendingRepo.Items["registration-1"] = pending.PendingRegistration{
 		ID:    "registration-1",
@@ -144,7 +159,7 @@ func TestVerify_WhenCodeDoesNotMatch_ShouldReturnErrorWithoutCreatingUser(t *tes
 	recoveryRepo := mocks.NewRecoveryRepo()
 	userRepo := mocks.NewUserRepo()
 	queue := mocks.NewTestEmailQueue()
-	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue)
+	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue, "")
 
 	pendingRepo.Items["registration-1"] = pending.PendingRegistration{
 		ID:    "registration-1",
@@ -170,7 +185,7 @@ func TestResendCode_WhenPendingRegistrationExists_ShouldQueueEmail(t *testing.T)
 	recoveryRepo := mocks.NewRecoveryRepo()
 	userRepo := mocks.NewUserRepo()
 	queue := mocks.NewTestEmailQueue()
-	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue)
+	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue, "")
 
 	pendingRepo.Items["registration-1"] = pending.PendingRegistration{
 		ID:    "registration-1",
@@ -191,7 +206,7 @@ func TestRecoverPassword_WhenUserExists_ShouldSaveRecoveryAndQueueEmail(t *testi
 	userRepo := mocks.NewUserRepo()
 	userRepo.ExistingEmails["owner@example.com"] = true
 	queue := mocks.NewTestEmailQueue()
-	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue)
+	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue, "")
 
 	output, err := svc.RecoverPassword(ctx, PasswordRecoveryInput{Email: "owner@example.com"})
 	if err != nil {
@@ -213,7 +228,7 @@ func TestRecoverPassword_WhenUserDoesNotExist_ShouldReturnPendingStatusWithoutSa
 	recoveryRepo := mocks.NewRecoveryRepo()
 	userRepo := mocks.NewUserRepo()
 	queue := mocks.NewTestEmailQueue()
-	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue)
+	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue, "")
 
 	output, err := svc.RecoverPassword(ctx, PasswordRecoveryInput{Email: "missing@example.com"})
 	if err != nil {
@@ -238,7 +253,7 @@ func TestConfirmPasswordRecovery_WhenCodeMatches_ShouldUpdatePasswordQueueEmailA
 	recoveryRepo := mocks.NewRecoveryRepo()
 	userRepo := mocks.NewUserRepo()
 	queue := mocks.NewTestEmailQueue()
-	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue)
+	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue, "")
 
 	recoveryRepo.Items["recovery-1"] = recovery.PasswordRecovery{
 		ID:    "recovery-1",
@@ -270,7 +285,7 @@ func TestConfirmPasswordRecovery_WhenCodeDoesNotMatch_ShouldReturnErrorWithoutUp
 	recoveryRepo := mocks.NewRecoveryRepo()
 	userRepo := mocks.NewUserRepo()
 	queue := mocks.NewTestEmailQueue()
-	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue)
+	svc := NewRegistrationService(pendingRepo, recoveryRepo, userRepo, queue, "")
 
 	recoveryRepo.Items["recovery-1"] = recovery.PasswordRecovery{
 		ID:    "recovery-1",

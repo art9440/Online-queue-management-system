@@ -11,29 +11,34 @@ import (
 
 func MustGet(ctx context.Context, key string) (string, error) {
 	log := logger.From(ctx)
+
 	val := os.Getenv(key)
 	if val == "" {
 		log.Error("env is required but not set", "key", key)
 		return "", fmt.Errorf("env %s is required but not set", key)
 	}
+
 	return val, nil
 }
 
 func Get(ctx context.Context, key string, defaultVal string) string {
 	log := logger.From(ctx)
+
 	val := os.Getenv(key)
 	if val == "" {
 		log.Warn("env is not set, using default value", "key", key, "default", defaultVal)
 		return defaultVal
 	}
+
 	return val
 }
 
 func GetInt(ctx context.Context, key string) (int, error) {
 	log := logger.From(ctx)
+
 	val, err := MustGet(ctx, key)
 	if err != nil {
-		log.Error("error getting env", "key", key, "error", err)
+		log.Error("error getting env", "key", key, "err", err)
 		return 0, err
 	}
 
@@ -48,6 +53,7 @@ func GetInt(ctx context.Context, key string) (int, error) {
 
 func GetIntDefault(ctx context.Context, key string, defaultVal int) int {
 	log := logger.From(ctx)
+
 	val := os.Getenv(key)
 	if val == "" {
 		return defaultVal
@@ -64,11 +70,13 @@ func GetIntDefault(ctx context.Context, key string, defaultVal int) int {
 
 func GetDuration(ctx context.Context, key string) (time.Duration, error) {
 	log := logger.From(ctx)
+
 	val, err := MustGet(ctx, key)
 	if err != nil {
-		log.Error("error getting env", "key", key, "error", err)
+		log.Error("error getting env", "key", key, "err", err)
 		return 0, err
 	}
+
 	d, err := time.ParseDuration(val)
 	if err != nil {
 		log.Error("env must be duration", "key", key, "value", val)
@@ -80,6 +88,7 @@ func GetDuration(ctx context.Context, key string) (time.Duration, error) {
 
 func GetDurationDefault(ctx context.Context, key string, defaultVal time.Duration) time.Duration {
 	log := logger.From(ctx)
+
 	val := os.Getenv(key)
 	if val == "" {
 		return defaultVal
@@ -87,7 +96,7 @@ func GetDurationDefault(ctx context.Context, key string, defaultVal time.Duratio
 
 	d, err := time.ParseDuration(val)
 	if err != nil {
-		log.Error("env must be duration", "key", key, "value", val)
+		log.Error("env must be duration, using default value", "key", key, "value", val, "default", defaultVal, "err", err)
 		return defaultVal
 	}
 
@@ -96,6 +105,7 @@ func GetDurationDefault(ctx context.Context, key string, defaultVal time.Duratio
 
 func GetBool(ctx context.Context, key string, defaultVal bool) (bool, error) {
 	log := logger.From(ctx)
+
 	val := os.Getenv(key)
 	if val == "" {
 		return defaultVal, nil
@@ -103,7 +113,7 @@ func GetBool(ctx context.Context, key string, defaultVal bool) (bool, error) {
 
 	b, err := strconv.ParseBool(val)
 	if err != nil {
-		log.Error("env must be bool", "key", key, "value", val)
+		log.Error("env must be bool", "key", key, "value", val, "err", err)
 		return defaultVal, err
 	}
 

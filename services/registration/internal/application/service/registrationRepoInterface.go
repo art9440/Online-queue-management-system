@@ -10,6 +10,7 @@ type PendingRepo interface {
 	Save(ctx context.Context, pending pending.PendingRegistration) error
 	Get(ctx context.Context, registrationID string) (pending.PendingRegistration, error)
 	Delete(ctx context.Context, registrationID string) error
+	GetAndValidate(ctx context.Context, id string, code string) (pending.PendingRegistration, error)
 }
 
 type RecoveryRepo interface {
