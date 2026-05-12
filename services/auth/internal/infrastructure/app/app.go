@@ -6,7 +6,6 @@ import (
 	"Online-queue-management-system/libs/middleware"
 	"Online-queue-management-system/libs/redisclient"
 	"context"
-	"fmt"
 	"net"
 	"net/http"
 	"time"
@@ -32,7 +31,7 @@ type App struct {
 func New(ctx context.Context) (*App, error) {
 	log := logger.From(ctx)
 
-	cfg, err := config.Load()
+	cfg, err := config.Load(ctx)
 	if err != nil {
 		log.Error("failed to load auth config", "err", err)
 		return nil, err
@@ -130,17 +129,7 @@ func (a *App) Close() {
 }
 
 func newPostgres(ctx context.Context, cfg config.Config) (*pgxpool.Pool, error) {
-	dsn := fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		cfg.DBUser,
-		cfg.DBPassword,
-		cfg.DBHost,
-		cfg.DBPort,
-		cfg.DBName,
-		cfg.DBSSLMode,
-	)
-
-	pool, err := pgxpool.New(ctx, dsn)
+	pool, err := pgxpool.New(ctx, cfg.DBCfg.DSN)
 	if err != nil {
 		return nil, err
 	}
