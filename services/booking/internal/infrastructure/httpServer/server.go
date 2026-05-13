@@ -112,6 +112,9 @@ func (s *HttpServer) CreateAppointment(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, domain.ErrTimeSlotBusy):
 			http.Error(w, err.Error(), http.StatusConflict)
 
+		case errors.Is(err, domain.ErrAppointmentNotAvailable):
+			http.Error(w, err.Error(), http.StatusConflict)
+
 		case errors.Is(err, liberrors.ErrInvalidBranchID),
 			errors.Is(err, liberrors.ErrInvalidEmployeeID),
 			errors.Is(err, liberrors.ErrInvalidServiceID),

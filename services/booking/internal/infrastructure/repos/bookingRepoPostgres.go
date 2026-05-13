@@ -191,6 +191,13 @@ func (r *BookingRepoPostgres) CreateAppointment(
 			WHERE s.id = $4
 			  AND s.branch_id = $2
 			  AND e.branch_id = $2
+			  AND EXISTS (
+				  SELECT 1
+				  FROM employee_schedules sch
+				  WHERE sch.employee_id = e.id
+				    AND sch.starts_at <= $5
+				    AND sch.ends_at >= ($5::timestamptz + (s.duration_minutes * interval '1 minute'))
+			  )
 			RETURNING
 				id,
 				client_id,
@@ -267,9 +274,7 @@ func (r *BookingRepoPostgres) CreateAppointment(
 		}
 
 		if errors.Is(err, sql.ErrNoRows) {
-			return domain.CreateAppointmentOutput{}, fmt.Errorf(
-				"invalid appointment data: service, employee, branch relation not found",
-			)
+			return domain.CreateAppointmentOutput{}, domain.ErrAppointmentNotAvailable
 		}
 
 		return domain.CreateAppointmentOutput{}, fmt.Errorf("create appointment: %w", err)
