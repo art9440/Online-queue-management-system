@@ -342,11 +342,165 @@ func (s *HttpServer) GetAppointmentsByEmployeeID(w http.ResponseWriter, r *http.
 }
 
 func (s *HttpServer) GetAppointmentByID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	log := logger.From(ctx)
 
+	log.Info("get appointment by id request started")
+
+	user := auth.FromContext(ctx)
+	if user == nil {
+		log.Warn("unauthorized get appointment by id request")
+		http.Error(w, liberrors.ErrUnauthorized.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	appointmentIDStr := r.PathValue("id")
+
+	appointmentID, err := strconv.ParseInt(appointmentIDStr, 10, 64)
+	if err != nil || appointmentID <= 0 {
+		log.Warn(
+			"invalid appointment id",
+			"appointment_id_raw", appointmentIDStr,
+			"err", err,
+		)
+
+		http.Error(w, domain.ErrInvalidAppointmentID.Error(), http.StatusBadRequest)
+		return
+	}
+
+	log.Info(
+		"getting appointment by id",
+		"user_id", user.UserID,
+		"role_id", user.RoleID,
+		"role_name", user.RoleName,
+		"business_id", user.BusinessID,
+		"appointment_id", appointmentID,
+	)
+
+	appointment, err := s.svc.GetAppointmentByID(ctx, user, appointmentID)
+	if err != nil {
+		log.Error(
+			"failed to get appointment by id",
+			"user_id", user.UserID,
+			"role_id", user.RoleID,
+			"role_name", user.RoleName,
+			"business_id", user.BusinessID,
+			"appointment_id", appointmentID,
+			"err", err,
+		)
+
+		switch {
+		case errors.Is(err, liberrors.ErrUnauthorized):
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+
+		case errors.Is(err, liberrors.ErrForbidden):
+			http.Error(w, err.Error(), http.StatusForbidden)
+
+		case errors.Is(err, domain.ErrInvalidAppointmentID):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+
+		case errors.Is(err, domain.ErrAppointmentNotFound):
+			http.Error(w, err.Error(), http.StatusNotFound)
+
+		default:
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		return
+	}
+
+	response := dto.AppointmentFromDomain(appointment)
+
+	log.Info(
+		"appointment by id successfully received",
+		"user_id", user.UserID,
+		"business_id", user.BusinessID,
+		"appointment_id", appointmentID,
+	)
+
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (s *HttpServer) CancelAppointment(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	log := logger.From(ctx)
 
+	log.Info("cancel appointment request started")
+
+	user := auth.FromContext(ctx)
+	if user == nil {
+		log.Warn("unauthorized cancel appointment request")
+		http.Error(w, liberrors.ErrUnauthorized.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	appointmentIDStr := r.PathValue("id")
+
+	appointmentID, err := strconv.ParseInt(appointmentIDStr, 10, 64)
+	if err != nil || appointmentID <= 0 {
+		log.Warn(
+			"invalid appointment id",
+			"appointment_id_raw", appointmentIDStr,
+			"err", err,
+		)
+
+		http.Error(w, domain.ErrInvalidAppointmentID.Error(), http.StatusBadRequest)
+		return
+	}
+
+	log.Info(
+		"cancelling appointment",
+		"user_id", user.UserID,
+		"role_id", user.RoleID,
+		"role_name", user.RoleName,
+		"business_id", user.BusinessID,
+		"appointment_id", appointmentID,
+	)
+
+	if err := s.svc.CancelAppointment(ctx, user, appointmentID); err != nil {
+		log.Error(
+			"failed to cancel appointment",
+			"user_id", user.UserID,
+			"role_id", user.RoleID,
+			"role_name", user.RoleName,
+			"business_id", user.BusinessID,
+			"appointment_id", appointmentID,
+			"err", err,
+		)
+
+		switch {
+		case errors.Is(err, liberrors.ErrUnauthorized):
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+
+		case errors.Is(err, liberrors.ErrForbidden):
+			http.Error(w, err.Error(), http.StatusForbidden)
+
+		case errors.Is(err, domain.ErrInvalidAppointmentID):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+
+		case errors.Is(err, domain.ErrAppointmentNotFound):
+			http.Error(w, err.Error(), http.StatusNotFound)
+
+		case errors.Is(err, domain.ErrAppointmentCancelled),
+			errors.Is(err, domain.ErrAppointmentCompleted),
+			errors.Is(err, domain.ErrAppointmentNotAvailable):
+			http.Error(w, err.Error(), http.StatusConflict)
+
+		default:
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		return
+	}
+
+	log.Info(
+		"appointment successfully cancelled",
+		"user_id", user.UserID,
+		"business_id", user.BusinessID,
+		"appointment_id", appointmentID,
+	)
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func writeJSON(w http.ResponseWriter, status int, data any) {

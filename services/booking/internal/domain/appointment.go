@@ -14,6 +14,7 @@ const (
 type Appointment struct {
 	ID         int64
 	ClientID   int64
+	BusinessID int64
 	BranchID   int64
 	EmployeeID int64
 	ServiceID  int64

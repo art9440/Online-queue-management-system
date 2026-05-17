@@ -84,11 +84,97 @@ func (r *BookingRepoPostgres) GetAppointmentsByEmployeeID(
 }
 
 func (r *BookingRepoPostgres) GetAppointmentByID(ctx context.Context, appointmentID int64) (domain.Appointment, error) {
-	return domain.Appointment{}, nil
+	const query = `
+		SELECT
+			a.id,
+			a.client_id,
+			b.business_id,
+			a.branch_id,
+			a.employee_id,
+			a.service_id,
+			a.start_time,
+			a.end_time,
+			a.status,
+			a.comment
+		FROM appointments a
+		JOIN branches b ON b.id = a.branch_id
+		WHERE a.id = $1
+	`
+
+	var appointment domain.Appointment
+
+	err := r.db.QueryRowContext(ctx, query, appointmentID).Scan(
+		&appointment.ID,
+		&appointment.ClientID,
+		&appointment.BusinessID,
+		&appointment.BranchID,
+		&appointment.EmployeeID,
+		&appointment.ServiceID,
+		&appointment.StartTime,
+		&appointment.EndTime,
+		&appointment.Status,
+		&appointment.Comment,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.Appointment{}, domain.ErrAppointmentNotFound
+		}
+
+		return domain.Appointment{}, fmt.Errorf("query appointment by id: %w", err)
+	}
+
+	return appointment, nil
 }
 
 func (r *BookingRepoPostgres) CancelAppointment(ctx context.Context, appointmentID int64) error {
-	return nil
+	const query = `
+		UPDATE appointments
+		SET status = $2
+		WHERE id = $1
+		  AND status IN ($3, $4)
+		RETURNING id
+	`
+
+	var updatedID int64
+	err := r.db.QueryRowContext(
+		ctx,
+		query,
+		appointmentID,
+		domain.AppointmentStatusCancelled,
+		domain.AppointmentStatusPending,
+		domain.AppointmentStatusConfirmed,
+	).Scan(&updatedID)
+	if err == nil {
+		return nil
+	}
+
+	if !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("cancel appointment: %w", err)
+	}
+
+	const statusQuery = `
+		SELECT status
+		FROM appointments
+		WHERE id = $1
+	`
+
+	var status domain.AppointmentStatus
+	if statusErr := r.db.QueryRowContext(ctx, statusQuery, appointmentID).Scan(&status); statusErr != nil {
+		if errors.Is(statusErr, sql.ErrNoRows) {
+			return domain.ErrAppointmentNotFound
+		}
+
+		return fmt.Errorf("query appointment status after cancel: %w", statusErr)
+	}
+
+	switch status {
+	case domain.AppointmentStatusCancelled:
+		return domain.ErrAppointmentCancelled
+	case domain.AppointmentStatusCompleted:
+		return domain.ErrAppointmentCompleted
+	default:
+		return domain.ErrAppointmentNotAvailable
+	}
 }
 
 func (r *BookingRepoPostgres) GetAvailableSlots(

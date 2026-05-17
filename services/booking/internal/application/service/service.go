@@ -37,6 +37,84 @@ func (s *BookingService) GetAppointmentsByEmployeeID(
 	}
 }
 
+func (s *BookingService) GetAppointmentByID(
+	ctx context.Context,
+	user *auth.AccessClaims,
+	appointmentID int64,
+) (domain.Appointment, error) {
+	if user == nil {
+		return domain.Appointment{}, liberrors.ErrUnauthorized
+	}
+
+	if appointmentID <= 0 {
+		return domain.Appointment{}, domain.ErrInvalidAppointmentID
+	}
+
+	switch auth.Role(user.RoleName) {
+	case auth.RoleBusinessAdmin, auth.RoleManager:
+		appointment, err := s.repoPostgres.GetAppointmentByID(ctx, appointmentID)
+		if err != nil {
+			return domain.Appointment{}, err
+		}
+
+		switch auth.Role(user.RoleName) {
+		case auth.RoleBusinessAdmin:
+			if appointment.BusinessID != user.BusinessID {
+				return domain.Appointment{}, liberrors.ErrForbidden
+			}
+
+		case auth.RoleManager:
+			if user.BranchID == nil || appointment.BranchID != *user.BranchID {
+				return domain.Appointment{}, liberrors.ErrForbidden
+			}
+		}
+
+		return appointment, nil
+
+	default:
+		return domain.Appointment{}, liberrors.ErrForbidden
+	}
+}
+
+func (s *BookingService) CancelAppointment(
+	ctx context.Context,
+	user *auth.AccessClaims,
+	appointmentID int64,
+) error {
+	if user == nil {
+		return liberrors.ErrUnauthorized
+	}
+
+	if appointmentID <= 0 {
+		return domain.ErrInvalidAppointmentID
+	}
+
+	switch auth.Role(user.RoleName) {
+	case auth.RoleBusinessAdmin, auth.RoleManager:
+		appointment, err := s.repoPostgres.GetAppointmentByID(ctx, appointmentID)
+		if err != nil {
+			return err
+		}
+
+		switch auth.Role(user.RoleName) {
+		case auth.RoleBusinessAdmin:
+			if appointment.BusinessID != user.BusinessID {
+				return liberrors.ErrForbidden
+			}
+
+		case auth.RoleManager:
+			if user.BranchID == nil || appointment.BranchID != *user.BranchID {
+				return liberrors.ErrForbidden
+			}
+		}
+
+		return s.repoPostgres.CancelAppointment(ctx, appointmentID)
+
+	default:
+		return liberrors.ErrForbidden
+	}
+}
+
 func (s *BookingService) CreateAppointment(
 	ctx context.Context,
 	input domain.CreateAppointmentInput,
