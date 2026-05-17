@@ -17,6 +17,13 @@ type EmployeeResponse struct {
 	Position string `json:"position"`
 }
 
+type ServiceResponse struct {
+	ID              int64   `json:"id"`
+	Name            string  `json:"name"`
+	DurationMinutes int     `json:"duration_minutes"`
+	Price           float64 `json:"price"`
+}
+
 func BranchesFromDomain(branches []domain.Branch) []BranchResponse {
 	result := make([]BranchResponse, 0, len(branches))
 
@@ -51,5 +58,24 @@ func branchFromDomain(branch domain.Branch) BranchResponse {
 		ID:      branch.ID,
 		Name:    branch.Name,
 		Address: branch.Address,
+	}
+}
+
+func ServicesFromDomain(services []domain.Service) []ServiceResponse {
+	result := make([]ServiceResponse, 0, len(services))
+
+	for _, service := range services {
+		result = append(result, serviceFromDomain(service))
+	}
+
+	return result
+}
+
+func serviceFromDomain(service domain.Service) ServiceResponse {
+	return ServiceResponse{
+		ID:              service.ID,
+		Name:            service.Name,
+		DurationMinutes: service.DurationMinutes,
+		Price:           service.Price,
 	}
 }

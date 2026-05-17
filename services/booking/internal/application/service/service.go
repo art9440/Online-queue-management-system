@@ -84,3 +84,30 @@ func (s *BookingService) CreateAppointment(
 
 	return appointment, nil
 }
+
+func (s *BookingService) GetAvailableSlots(
+	ctx context.Context,
+	input domain.AvailableSlotsInput,
+) ([]domain.AvailableSlot, error) {
+	if input.RegistrationSlug == "" {
+		return nil, domain.ErrInvalidRegistrationSlug
+	}
+
+	if input.BranchID <= 0 {
+		return nil, liberrors.ErrInvalidBranchID
+	}
+
+	if input.EmployeeID <= 0 {
+		return nil, liberrors.ErrInvalidEmployeeID
+	}
+
+	if input.ServiceID <= 0 {
+		return nil, liberrors.ErrInvalidServiceID
+	}
+
+	if input.Date.IsZero() {
+		return nil, domain.ErrInvalidStartTime
+	}
+
+	return s.repoPostgres.GetAvailableSlots(ctx, input)
+}

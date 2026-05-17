@@ -1,8 +1,8 @@
 package app
 
 import (
-	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/auth"
+	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/logger"
 	"Online-queue-management-system/libs/middleware"
 	branchesConfig "Online-queue-management-system/services/branches/config"
@@ -41,6 +41,20 @@ func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg libconfig.DBCo
 	mux.Handle("/branches", authMiddleware(http.HandlerFunc(serverImpl.GetBranches)))
 	mux.Handle("/branches/{id}/employees",
 		authMiddleware(http.HandlerFunc(serverImpl.GetBranchEmployees)))
+	mux.Handle("/services",
+		authMiddleware(http.HandlerFunc(serverImpl.GetServices)))
+	mux.Handle("/services/{serviceId}/branches",
+		authMiddleware(http.HandlerFunc(serverImpl.GetBranchesWithService)))
+	mux.Handle("/services/{serviceId}/branches/{branchId}/employees",
+		authMiddleware(http.HandlerFunc(serverImpl.GetEmployeesForService)))
+
+	// Public endpoints - no authentication required
+	mux.Handle("/public/{registrationSlug}/services",
+		http.HandlerFunc(serverImpl.GetPublicServices))
+	mux.Handle("/public/{registrationSlug}/services/{serviceId}/branches",
+		http.HandlerFunc(serverImpl.GetPublicBranchesWithService))
+	mux.Handle("/public/{registrationSlug}/services/{serviceId}/branches/{branchId}/employees",
+		http.HandlerFunc(serverImpl.GetPublicEmployeesForService))
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)

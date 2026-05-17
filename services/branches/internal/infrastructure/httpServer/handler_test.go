@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -339,5 +340,176 @@ func TestWriteJSON(t *testing.T) {
 
 	if result["test"] != "data" {
 		t.Fatalf("expected test=data, got test=%s", result["test"])
+	}
+}
+
+// Tests for public endpoints
+
+func TestGetPublicServices_Success(t *testing.T) {
+	// Arrange
+	mockServices := []domain.Service{
+		{ID: 1, BranchID: 1, Name: "Service 1", DurationMinutes: 30, Price: 500.0},
+		{ID: 2, BranchID: 1, Name: "Service 2", DurationMinutes: 45, Price: 750.0},
+	}
+
+	mockRepo := &mocks.MockBranchesRepository{
+		GetBusinessIDByRegistrationSlugFunc: func(ctx context.Context, registrationSlug string) (int64, error) {
+			if registrationSlug == "beautiful-salon" {
+				return 100, nil
+			}
+			return 0, errors.New("business not found")
+		},
+		GetServicesByBusinessIDFunc: func(ctx context.Context, businessID int64) ([]domain.Service, error) {
+			if businessID == 100 {
+				return mockServices, nil
+			}
+			return nil, nil
+		},
+	}
+
+	svc := service.New(mockRepo)
+	server := NewHttpServer(svc)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /public/{registrationSlug}/services", server.GetPublicServices)
+
+	req := httptest.NewRequest("GET", "/public/beautiful-salon/services", nil)
+	rec := httptest.NewRecorder()
+
+	// Act
+	mux.ServeHTTP(rec, req)
+
+	// Assert
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rec.Code)
+	}
+
+	var result []map[string]interface{}
+	if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
+		t.Fatalf("failed to unmarshal response: %v", err)
+	}
+
+	if len(result) != 2 {
+		t.Fatalf("expected 2 services, got %d", len(result))
+	}
+}
+
+func TestGetPublicBranchesWithService_Success(t *testing.T) {
+	// Arrange
+	mockBranches := []domain.Branch{
+		{ID: 1, BusinessID: 100, Name: "Branch 1", Address: "Address 1"},
+	}
+
+	mockRepo := &mocks.MockBranchesRepository{
+		GetBusinessIDByRegistrationSlugFunc: func(ctx context.Context, registrationSlug string) (int64, error) {
+			if registrationSlug == "beautiful-salon" {
+				return 100, nil
+			}
+			return 0, errors.New("business not found")
+		},
+		GetBranchesWithServiceFunc: func(ctx context.Context, businessID int64, serviceID int64) ([]domain.Branch, error) {
+			if businessID == 100 && serviceID == 1 {
+				return mockBranches, nil
+			}
+			return nil, nil
+		},
+	}
+
+	svc := service.New(mockRepo)
+	server := NewHttpServer(svc)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /public/{registrationSlug}/services/{serviceId}/branches", server.GetPublicBranchesWithService)
+
+	req := httptest.NewRequest("GET", "/public/beautiful-salon/services/1/branches", nil)
+	rec := httptest.NewRecorder()
+
+	// Act
+	mux.ServeHTTP(rec, req)
+
+	// Assert
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rec.Code)
+	}
+
+	var result []map[string]interface{}
+	if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
+		t.Fatalf("failed to unmarshal response: %v", err)
+	}
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 branch, got %d", len(result))
+	}
+}
+
+func TestGetPublicEmployeesForService_Success(t *testing.T) {
+	// Arrange
+	mockEmployees := []domain.Employee{
+		{ID: 1, BranchID: 1, Name: "John", Surname: "Doe", Position: "Master"},
+	}
+
+	mockRepo := &mocks.MockBranchesRepository{
+		GetBusinessIDByRegistrationSlugFunc: func(ctx context.Context, registrationSlug string) (int64, error) {
+			if registrationSlug == "beautiful-salon" {
+				return 100, nil
+			}
+			return 0, errors.New("business not found")
+		},
+		GetByIDFunc: func(ctx context.Context, branchID int64) ([]domain.Branch, error) {
+			return []domain.Branch{
+				{ID: 1, BusinessID: 100, Name: "Branch 1", Address: "Address 1"},
+			}, nil
+		},
+		GetEmployeesByServiceAndBranchFunc: func(ctx context.Context, serviceID int64, branchID int64) ([]domain.Employee, error) {
+			if serviceID == 1 && branchID == 1 {
+				return mockEmployees, nil
+			}
+			return nil, nil
+		},
+	}
+
+	svc := service.New(mockRepo)
+	server := NewHttpServer(svc)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /public/{registrationSlug}/services/{serviceId}/branches/{branchId}/employees", server.GetPublicEmployeesForService)
+
+	req := httptest.NewRequest("GET", "/public/beautiful-salon/services/1/branches/1/employees", nil)
+	rec := httptest.NewRecorder()
+
+	// Act
+	mux.ServeHTTP(rec, req)
+
+	// Assert
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rec.Code)
+	}
+
+	var result []map[string]interface{}
+	if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
+		t.Fatalf("failed to unmarshal response: %v", err)
+	}
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 employee, got %d", len(result))
+	}
+}
+
+func TestGetPublicServices_InvalidSlug_ReturnsBadRequest(t *testing.T) {
+	// Arrange
+	mockRepo := &mocks.MockBranchesRepository{}
+
+	svc := service.New(mockRepo)
+	server := NewHttpServer(svc)
+
+	req := httptest.NewRequest("GET", "/public//services", nil)
+	rec := httptest.NewRecorder()
+
+	// Act
+	server.GetPublicServices(rec, req)
+
+	// Assert
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", rec.Code)
 	}
 }

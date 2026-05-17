@@ -91,6 +91,97 @@ func (r *BookingRepoPostgres) CancelAppointment(ctx context.Context, appointment
 	return nil
 }
 
+func (r *BookingRepoPostgres) GetAvailableSlots(
+	ctx context.Context,
+	input domain.AvailableSlotsInput,
+) ([]domain.AvailableSlot, error) {
+	const query = `
+		WITH selected AS (
+			SELECT
+				s.duration_minutes,
+				b.timezone
+			FROM businesses bu
+			JOIN branches b ON b.business_id = bu.id
+			JOIN services s ON s.branch_id = b.id
+			JOIN employees e ON e.branch_id = b.id
+			JOIN employee_services es
+				ON es.employee_id = e.id
+				AND es.service_id = s.id
+			WHERE bu.registration_slug = $1
+			  AND s.id = $2
+			  AND b.id = $3
+			  AND e.id = $4
+			LIMIT 1
+		),
+		schedule_slots AS (
+			SELECT
+				slot_start AS start_time,
+				slot_start + (selected.duration_minutes * interval '1 minute') AS end_time
+			FROM selected
+			JOIN employee_schedules sch ON sch.employee_id = $4
+			CROSS JOIN LATERAL generate_series(
+				GREATEST(
+					sch.starts_at,
+					($5::date::timestamp AT TIME ZONE selected.timezone)
+				),
+				LEAST(
+					sch.ends_at - (selected.duration_minutes * interval '1 minute'),
+					(($5::date + interval '1 day')::timestamp AT TIME ZONE selected.timezone)
+						- (selected.duration_minutes * interval '1 minute')
+				),
+				interval '15 minutes'
+			) AS slot_start
+			WHERE sch.ends_at >= ($5::date::timestamp AT TIME ZONE selected.timezone)
+			  AND sch.starts_at < (($5::date + interval '1 day')::timestamp AT TIME ZONE selected.timezone)
+			  AND sch.ends_at - sch.starts_at >= selected.duration_minutes * interval '1 minute'
+		)
+		SELECT start_time, end_time
+		FROM schedule_slots slot
+		WHERE slot.start_time >= now()
+		  AND NOT EXISTS (
+			  SELECT 1
+			  FROM appointments a
+			  WHERE a.employee_id = $4
+			    AND a.status IN ('pending', 'confirmed')
+			    AND tstzrange(a.start_time, a.end_time, '[)')
+			        && tstzrange(slot.start_time, slot.end_time, '[)')
+		  )
+		ORDER BY start_time
+	`
+
+	rows, err := r.db.QueryContext(
+		ctx,
+		query,
+		input.RegistrationSlug,
+		input.ServiceID,
+		input.BranchID,
+		input.EmployeeID,
+		input.Date,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query available slots: %w", err)
+	}
+	defer rows.Close()
+
+	slots := make([]domain.AvailableSlot, 0)
+
+	for rows.Next() {
+		var slot domain.AvailableSlot
+
+		if err := rows.Scan(&slot.StartTime, &slot.EndTime); err != nil {
+			return nil, fmt.Errorf("scan available slot: %w", err)
+		}
+
+		slots = append(slots, slot)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate available slots rows: %w", err)
+	}
+
+	return slots, nil
+}
+
 func (r *BookingRepoPostgres) CheckClientExists(
 	ctx context.Context,
 	client domain.ClientInput,
@@ -188,9 +279,12 @@ func (r *BookingRepoPostgres) CreateAppointment(
 			JOIN employee_services es 
 				ON es.employee_id = e.id 
 				AND es.service_id = s.id
+			JOIN branches b ON b.id = $2
+			JOIN businesses bu ON bu.id = b.business_id
 			WHERE s.id = $4
 			  AND s.branch_id = $2
 			  AND e.branch_id = $2
+			  AND ($8 = '' OR bu.registration_slug = $8)
 			  AND EXISTS (
 				  SELECT 1
 				  FROM employee_schedules sch
@@ -245,6 +339,7 @@ func (r *BookingRepoPostgres) CreateAppointment(
 		input.StartTime,
 		domain.AppointmentStatusPending,
 		input.Comment,
+		input.RegistrationSlug,
 	).Scan(
 		&output.AppointmentID,
 		&output.ClientID,

@@ -17,6 +17,28 @@ type AppointmentResponse struct {
 	Comment    *string `json:"comment,omitempty"`
 }
 
+type AvailableSlotResponse struct {
+	StartTime string `json:"start_time"`
+	EndTime   string `json:"end_time"`
+}
+
+func AvailableSlotFromDomain(slot domain.AvailableSlot) AvailableSlotResponse {
+	return AvailableSlotResponse{
+		StartTime: slot.StartTime.Format(time.RFC3339),
+		EndTime:   slot.EndTime.Format(time.RFC3339),
+	}
+}
+
+func AvailableSlotsFromDomain(slots []domain.AvailableSlot) []AvailableSlotResponse {
+	result := make([]AvailableSlotResponse, 0, len(slots))
+
+	for _, slot := range slots {
+		result = append(result, AvailableSlotFromDomain(slot))
+	}
+
+	return result
+}
+
 func AppointmentFromDomain(appointment domain.Appointment) AppointmentResponse {
 	return AppointmentResponse{
 		ID:         appointment.ID,

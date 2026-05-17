@@ -50,6 +50,16 @@ func NewApp(
 	)
 
 	mux.Handle(
+		"POST /public/{registrationSlug}/appointments",
+		http.HandlerFunc(serverImpl.CreatePublicAppointment),
+	)
+
+	mux.Handle(
+		"GET /public/{registrationSlug}/services/{serviceId}/branches/{branchId}/employees/{employeeId}/slots",
+		http.HandlerFunc(serverImpl.GetPublicAvailableSlots),
+	)
+
+	mux.Handle(
 		"GET /employees/{id}/appointments",
 		authMiddleware(http.HandlerFunc(serverImpl.GetAppointmentsByEmployeeID)),
 	)

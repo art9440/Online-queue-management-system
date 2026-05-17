@@ -26,10 +26,11 @@ type Appointment struct {
 type CreateAppointmentInput struct {
 	Client ClientInput
 
-	BranchID   int64
-	EmployeeID int64
-	ServiceID  int64
-	StartTime  time.Time
+	RegistrationSlug string
+	BranchID         int64
+	EmployeeID       int64
+	ServiceID        int64
+	StartTime        time.Time
 
 	Comment *string
 }
@@ -60,4 +61,17 @@ type CreateAppointmentOutput struct {
 	EndTime   time.Time
 	Status    AppointmentStatus
 	Comment   *string
+}
+
+type AvailableSlotsInput struct {
+	RegistrationSlug string
+	ServiceID        int64
+	BranchID         int64
+	EmployeeID       int64
+	Date             time.Time
+}
+
+type AvailableSlot struct {
+	StartTime time.Time
+	EndTime   time.Time
 }

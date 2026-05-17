@@ -23,6 +23,14 @@ func NewHttpServer(svc *service.BookingService) *HttpServer {
 }
 
 func (s *HttpServer) CreateAppointment(w http.ResponseWriter, r *http.Request) {
+	s.createAppointment(w, r, "")
+}
+
+func (s *HttpServer) CreatePublicAppointment(w http.ResponseWriter, r *http.Request) {
+	s.createAppointment(w, r, r.PathValue("registrationSlug"))
+}
+
+func (s *HttpServer) createAppointment(w http.ResponseWriter, r *http.Request, registrationSlug string) {
 	ctx := r.Context()
 	log := logger.From(ctx)
 
@@ -67,11 +75,12 @@ func (s *HttpServer) CreateAppointment(w http.ResponseWriter, r *http.Request) {
 			Surname:    req.Client.Surname,
 			TgUsername: req.Client.TgUsername,
 		},
-		BranchID:   req.BranchID,
-		EmployeeID: req.EmployeeID,
-		ServiceID:  req.ServiceID,
-		StartTime:  startTime,
-		Comment:    req.Comment,
+		RegistrationSlug: registrationSlug,
+		BranchID:         req.BranchID,
+		EmployeeID:       req.EmployeeID,
+		ServiceID:        req.ServiceID,
+		StartTime:        startTime,
+		Comment:          req.Comment,
 	}
 
 	log.Info(
@@ -81,6 +90,7 @@ func (s *HttpServer) CreateAppointment(w http.ResponseWriter, r *http.Request) {
 		"client_email", stringPtrValue(req.Client.Email),
 		"client_phone", req.Client.Phone,
 		"client_tg_username", stringPtrValue(req.Client.TgUsername),
+		"slug", registrationSlug,
 		"branch_id", req.BranchID,
 		"employee_id", req.EmployeeID,
 		"service_id", req.ServiceID,
@@ -96,6 +106,7 @@ func (s *HttpServer) CreateAppointment(w http.ResponseWriter, r *http.Request) {
 			"client_email", stringPtrValue(req.Client.Email),
 			"client_phone", req.Client.Phone,
 			"client_tg_username", stringPtrValue(req.Client.TgUsername),
+			"slug", registrationSlug,
 			"branch_id", req.BranchID,
 			"employee_id", req.EmployeeID,
 			"service_id", req.ServiceID,
@@ -118,6 +129,7 @@ func (s *HttpServer) CreateAppointment(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, liberrors.ErrInvalidBranchID),
 			errors.Is(err, liberrors.ErrInvalidEmployeeID),
 			errors.Is(err, liberrors.ErrInvalidServiceID),
+			errors.Is(err, domain.ErrInvalidRegistrationSlug),
 			errors.Is(err, domain.ErrInvalidClient),
 			errors.Is(err, domain.ErrInvalidClientContact),
 			errors.Is(err, domain.ErrInvalidStartTime):
@@ -141,6 +153,7 @@ func (s *HttpServer) CreateAppointment(w http.ResponseWriter, r *http.Request) {
 		"client_email", stringPtrValue(req.Client.Email),
 		"client_phone", req.Client.Phone,
 		"client_tg_username", stringPtrValue(req.Client.TgUsername),
+		"slug", registrationSlug,
 		"branch_id", appointment.BranchID,
 		"employee_id", appointment.EmployeeID,
 		"service_id", appointment.ServiceID,
@@ -158,6 +171,96 @@ func stringPtrValue(value *string) string {
 	}
 
 	return *value
+}
+
+func (s *HttpServer) GetPublicAvailableSlots(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	log := logger.From(ctx)
+
+	log.Info("get public available slots request started")
+
+	registrationSlug := r.PathValue("registrationSlug")
+	serviceIDStr := r.PathValue("serviceId")
+	branchIDStr := r.PathValue("branchId")
+	employeeIDStr := r.PathValue("employeeId")
+	dateStr := r.URL.Query().Get("date")
+
+	serviceID, err := strconv.ParseInt(serviceIDStr, 10, 64)
+	if err != nil || serviceID <= 0 {
+		log.Warn("invalid service id", "service_id_raw", serviceIDStr, "err", err)
+		http.Error(w, liberrors.ErrInvalidServiceID.Error(), http.StatusBadRequest)
+		return
+	}
+
+	branchID, err := strconv.ParseInt(branchIDStr, 10, 64)
+	if err != nil || branchID <= 0 {
+		log.Warn("invalid branch id", "branch_id_raw", branchIDStr, "err", err)
+		http.Error(w, liberrors.ErrInvalidBranchID.Error(), http.StatusBadRequest)
+		return
+	}
+
+	employeeID, err := strconv.ParseInt(employeeIDStr, 10, 64)
+	if err != nil || employeeID <= 0 {
+		log.Warn("invalid employee id", "employee_id_raw", employeeIDStr, "err", err)
+		http.Error(w, liberrors.ErrInvalidEmployeeID.Error(), http.StatusBadRequest)
+		return
+	}
+
+	date, err := time.Parse(time.DateOnly, dateStr)
+	if err != nil {
+		log.Warn("invalid slots date", "date", dateStr, "err", err)
+		http.Error(w, "invalid date format, expected YYYY-MM-DD", http.StatusBadRequest)
+		return
+	}
+
+	input := domain.AvailableSlotsInput{
+		RegistrationSlug: registrationSlug,
+		ServiceID:        serviceID,
+		BranchID:         branchID,
+		EmployeeID:       employeeID,
+		Date:             date,
+	}
+
+	slots, err := s.svc.GetAvailableSlots(ctx, input)
+	if err != nil {
+		log.Error(
+			"failed to get public available slots",
+			"slug", registrationSlug,
+			"service_id", serviceID,
+			"branch_id", branchID,
+			"employee_id", employeeID,
+			"date", dateStr,
+			"err", err,
+		)
+
+		switch {
+		case errors.Is(err, domain.ErrInvalidRegistrationSlug),
+			errors.Is(err, liberrors.ErrInvalidBranchID),
+			errors.Is(err, liberrors.ErrInvalidEmployeeID),
+			errors.Is(err, liberrors.ErrInvalidServiceID),
+			errors.Is(err, domain.ErrInvalidStartTime):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+
+		default:
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		return
+	}
+
+	response := dto.AvailableSlotsFromDomain(slots)
+
+	log.Info(
+		"public available slots successfully received",
+		"slug", registrationSlug,
+		"service_id", serviceID,
+		"branch_id", branchID,
+		"employee_id", employeeID,
+		"date", dateStr,
+		"slots_count", len(response),
+	)
+
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (s *HttpServer) GetAppointmentsByEmployeeID(w http.ResponseWriter, r *http.Request) {

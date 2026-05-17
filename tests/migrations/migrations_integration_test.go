@@ -17,7 +17,7 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-const latestMigrationVersion int64 = 20260420193000
+const latestMigrationVersion int64 = 20260517190000
 
 func TestMigrations_WhenAppliedToPostgres_ShouldCreateSeededSchemaAndRollback(t *testing.T) {
 	dsn := os.Getenv("MIGRATIONS_TEST_DSN")
@@ -88,6 +88,7 @@ func TestMigrations_WhenAppliedToPostgres_ShouldCreateSeededSchemaAndRollback(t 
 	assertCount(t, ctx, db, "services", 9)
 	assertCount(t, ctx, db, "employee_services", 15)
 	assertCount(t, ctx, db, "employee_schedules", 24)
+	assertDemoBusinessSlug(t, ctx, db)
 
 	if err := goose.DownToContext(ctx, db, migrationsDir(t), 0); err != nil {
 		t.Fatalf("rollback migrations: %v", err)
@@ -104,6 +105,25 @@ func TestMigrations_WhenAppliedToPostgres_ShouldCreateSeededSchemaAndRollback(t 
 		"clients",
 		"appointments",
 	})
+}
+
+func assertDemoBusinessSlug(t *testing.T, ctx context.Context, db *sql.DB) {
+	t.Helper()
+
+	var slug string
+	err := db.QueryRowContext(ctx, `
+		SELECT registration_slug
+		FROM businesses
+		WHERE name = 'Demo Business'
+		  AND type = 'service_company'
+	`).Scan(&slug)
+	if err != nil {
+		t.Fatalf("query demo business slug: %v", err)
+	}
+
+	if slug != "demo-business" {
+		t.Fatalf("expected demo business slug demo-business, got %q", slug)
+	}
 }
 
 func dsnWithSearchPath(t *testing.T, dsn, schema string) string {
