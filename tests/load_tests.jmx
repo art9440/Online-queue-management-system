@@ -337,7 +337,7 @@
             </elementProp>
             <elementProp name="" elementType="Header">
               <stringProp name="Header.name">Cookie</stringProp>
-              <stringProp name="Header.value">access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJsb2dpbiI6ImFkbWluQHRlc3QuY29tIiwicm9sZV9pZCI6Miwicm9sZV9uYW1lIjoiYnVzaW5lc3NfYWRtaW4iLCJidXNpbmVzc19pZCI6MSwic3ViIjoiMSIsImV4cCI6MTc3ODYzMjQzOSwiaWF0IjoxNzc4NjMxNTM5fQ.emCIpymIlqxgFRO3WB7xxrk4f4WtjBv-bohzkC-ew-M </stringProp>
+              <stringProp name="Header.value">access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJsb2dpbiI6ImFkbWluQHRlc3QuY29tIiwicm9sZV9pZCI6Miwicm9sZV9uYW1lIjoiYnVzaW5lc3NfYWRtaW4iLCJidXNpbmVzc19pZCI6MSwic3ViIjoiMSIsImV4cCI6MTc3ODY2ODcyMywiaWF0IjoxNzc4NjY3ODIzfQ.He-_FGh8JSdH3rGKAAWABblg-J3zcmoZMlEHxzi5VzU</stringProp>
             </elementProp>
           </collectionProp>
         </HeaderManager>
