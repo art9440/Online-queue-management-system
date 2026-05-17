@@ -1,14 +1,8 @@
-import { useMutation } from "@tanstack/react-query";
-import axios from "axios";
-
-export const api = axios.create({
-    baseURL: '',
-    withCredentials: true
-});
+import { registrationApi } from "./axios";
 
 export const registerBusiness = async(data) => {
     try {
-        const response = await api.post('/api/register', {
+        const response = await registrationApi.post('/register', {
             email : data.email,
             password : data.password,
             business_name : data.businessName,
@@ -30,3 +24,23 @@ export const registerBusiness = async(data) => {
         throw new Error(error.message || 'Произошла неизвестная ошибка');
     }
 }
+
+export const verifyCode = async({ registration_id, code }) => {
+    try {
+        const response = await registrationApi.post('/verify', {
+            registration_id, code});
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const resendCode = async({ registration_id }) => {
+    try {
+        const response = await registrationApi.post('/resend', {registration_id});
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+};
+

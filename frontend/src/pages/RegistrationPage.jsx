@@ -1,13 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect} from "react";
 import { useNavigate } from "react-router-dom";
 import { registerBusiness } from "../api/registration";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 import { Select } from "../components/ui/Select";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "../context/AuthContext";
 
 export const RegistrationPage = () => {
   const navigate = useNavigate();
+  const { user, loading, login, getRedirectPath } = useAuth();
+
+  useEffect(() => {
+    if (user && !loading) {
+      navigate(getRedirectPath(user), { replace: true });
+    }
+  }, [user, loading, navigate, getRedirectPath]);
 
   const [fieldError, setFieldError] = useState({});
   const [formData, setFormData] = useState({
