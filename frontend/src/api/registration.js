@@ -26,21 +26,12 @@ export const registerBusiness = async(data) => {
 }
 
 export const verifyCode = async({ registration_id, code }) => {
-    try {
-        const response = await registrationApi.post('/verify', {
-            registration_id, code});
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+    const response = await registrationApi.post('/verify', {
+        registration_id, code});
+    return response.data;
 };
 
 export const resendCode = async({ registration_id }) => {
-    try {
-        const response = await registrationApi.post('/resend', {registration_id});
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+    const response = await registrationApi.post('/resend', {registration_id});
+    return response.data;
 };
-

@@ -17,7 +17,7 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-const latestMigrationVersion int64 = 20260517190000
+const latestMigrationVersion int64 = 20260517193000
 
 func TestMigrations_WhenAppliedToPostgres_ShouldCreateSeededSchemaAndRollback(t *testing.T) {
 	dsn := os.Getenv("MIGRATIONS_TEST_DSN")

@@ -20,12 +20,14 @@ type AppointmentResponse struct {
 type AvailableSlotResponse struct {
 	StartTime string `json:"start_time"`
 	EndTime   string `json:"end_time"`
+	Timezone  string `json:"timezone"`
 }
 
 func AvailableSlotFromDomain(slot domain.AvailableSlot) AvailableSlotResponse {
 	return AvailableSlotResponse{
 		StartTime: slot.StartTime.Format(time.RFC3339),
 		EndTime:   slot.EndTime.Format(time.RFC3339),
+		Timezone:  slot.Timezone,
 	}
 }
 

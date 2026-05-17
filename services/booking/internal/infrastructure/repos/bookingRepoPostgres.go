@@ -202,7 +202,8 @@ func (r *BookingRepoPostgres) GetAvailableSlots(
 		schedule_slots AS (
 			SELECT
 				slot_start AS start_time,
-				slot_start + (selected.duration_minutes * interval '1 minute') AS end_time
+				slot_start + (selected.duration_minutes * interval '1 minute') AS end_time,
+				selected.timezone
 			FROM selected
 			JOIN employee_schedules sch ON sch.employee_id = $4
 			CROSS JOIN LATERAL generate_series(
@@ -221,7 +222,7 @@ func (r *BookingRepoPostgres) GetAvailableSlots(
 			  AND sch.starts_at < (($5::date + interval '1 day')::timestamp AT TIME ZONE selected.timezone)
 			  AND sch.ends_at - sch.starts_at >= selected.duration_minutes * interval '1 minute'
 		)
-		SELECT start_time, end_time
+		SELECT start_time, end_time, timezone
 		FROM schedule_slots slot
 		WHERE slot.start_time >= now()
 		  AND NOT EXISTS (
@@ -254,7 +255,7 @@ func (r *BookingRepoPostgres) GetAvailableSlots(
 	for rows.Next() {
 		var slot domain.AvailableSlot
 
-		if err := rows.Scan(&slot.StartTime, &slot.EndTime); err != nil {
+		if err := rows.Scan(&slot.StartTime, &slot.EndTime, &slot.Timezone); err != nil {
 			return nil, fmt.Errorf("scan available slot: %w", err)
 		}
 

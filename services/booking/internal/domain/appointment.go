@@ -75,4 +75,5 @@ type AvailableSlotsInput struct {
 type AvailableSlot struct {
 	StartTime time.Time
 	EndTime   time.Time
+	Timezone  string
 }

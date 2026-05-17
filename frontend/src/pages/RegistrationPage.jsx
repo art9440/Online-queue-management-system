@@ -3,13 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { registerBusiness } from "../api/registration";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
-import { Select } from "../components/ui/Select";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 
 export const RegistrationPage = () => {
   const navigate = useNavigate();
-  const { user, loading, login, getRedirectPath } = useAuth();
+  const { user, loading, getRedirectPath } = useAuth();
 
   useEffect(() => {
     if (user && !loading) {
@@ -36,9 +35,11 @@ export const RegistrationPage = () => {
     switch (name) {
       case "email":
         if (!value) return "Введите email";
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(value)) return "Введите корректный email";
-        return null;
+        {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(value)) return "Введите корректный email";
+          return null;
+        }
 
       case "password":
         if (!value) return "Введите пароль";
@@ -111,7 +112,7 @@ export const RegistrationPage = () => {
     mutation.mutate(formData);
   };
 
-  const { isPending, isError, error } = mutation;
+  const { isPending, error } = mutation;
   const submitError = fieldError.submit || error?.message;
 
   return (

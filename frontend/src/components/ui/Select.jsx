@@ -5,13 +5,13 @@ export const Select = ({name, value, onChange, required, businessTypes, ...props
         name={name}
         value={value}
         onChange={onChange}
-        required={required}>
+        required={required}
+        {...props}>
             {businessTypes.map(type => (
                 <option key={type.value} value={type.value}>
                     {type.label}
                 </option>
             ))}
-        {...props}
         </select>
     )
 }
