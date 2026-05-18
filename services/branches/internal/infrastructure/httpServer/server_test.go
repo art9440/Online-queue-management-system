@@ -113,14 +113,25 @@ func TestGetBranches_WhenRoleIsForbidden_ShouldReturnInternalServerErrorWithForb
 func serveAuthenticatedBranchesRequest(t *testing.T, server *HttpServer, claims sharedauth.AccessClaims) *httptest.ResponseRecorder {
 	t.Helper()
 
+	return serveAuthenticatedRequest(t, http.HandlerFunc(server.GetBranches), "/branches", claims)
+}
+
+func serveAuthenticatedRequest(
+	t *testing.T,
+	handler http.Handler,
+	path string,
+	claims sharedauth.AccessClaims,
+) *httptest.ResponseRecorder {
+	t.Helper()
+
 	accessToken := signAccessToken(t, claims)
 
-	req := httptest.NewRequest(http.MethodGet, "/branches", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, path, http.NoBody)
 	req.AddCookie(&http.Cookie{Name: "access_token", Value: accessToken})
 	rec := httptest.NewRecorder()
 
 	middleware := sharedauth.Middleware(sharedauth.NewTokenParser("branches-access-secret"))
-	middleware(http.HandlerFunc(server.GetBranches)).ServeHTTP(rec, req)
+	middleware(handler).ServeHTTP(rec, req)
 	return rec
 }
 
@@ -176,5 +187,98 @@ func TestGetBranches_WhenRepositoryFails_ShouldReturnInternalServerError(t *test
 	}
 	if !strings.Contains(rec.Body.String(), "db failed") {
 		t.Fatalf("expected repository error body, got %q", rec.Body.String())
+	}
+}
+
+func TestGetBranchClients_WhenBusinessAdminIsAuthorized_ShouldReturnClients(t *testing.T) {
+	server, repo := newTestHTTPServer()
+	repo.BranchBusiness[11] = 7
+	repo.ClientsByBranchID[11] = []branchesdomain.Client{
+		{ID: 5, Name: "Alex", Surname: "Stone"},
+	}
+
+	rec := serveAuthenticatedRequest(t, http.HandlerFunc(server.GetBranchClients), "/branches/11/clients", sharedauth.AccessClaims{
+		UserID:     42,
+		Login:      "owner@example.com",
+		RoleID:     2,
+		RoleName:   string(branchesdomain.RoleBusinessAdmin),
+		BusinessID: 7,
+	})
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+
+	var body []branchesdomain.Client
+	decodeJSON(t, rec, &body)
+	if len(body) != 1 || body[0].ID != 5 {
+		t.Fatalf("unexpected clients response: %#v", body)
+	}
+}
+
+func TestGetBranchBookings_WhenManagerIsAuthorized_ShouldReturnBookings(t *testing.T) {
+	server, repo := newTestHTTPServer()
+	branchID := int64(11)
+	date := time.Date(2026, time.May, 18, 0, 0, 0, 0, time.UTC)
+	repo.SetBookings(branchID, date, []branchesdomain.Booking{
+		{ID: 21, BranchID: branchID, Client: branchesdomain.Client{ID: 5, Name: "Alex", Surname: "Stone"}},
+	})
+
+	rec := serveAuthenticatedRequest(t, http.HandlerFunc(server.GetBranchBookings), "/branches/11/bookings?date=2026-05-18", sharedauth.AccessClaims{
+		UserID:     43,
+		Login:      "manager@example.com",
+		RoleID:     3,
+		RoleName:   string(branchesdomain.RoleManager),
+		BusinessID: 7,
+		BranchID:   &branchID,
+	})
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+
+	var body []branchesdomain.Booking
+	decodeJSON(t, rec, &body)
+	if len(body) != 1 || body[0].ID != 21 {
+		t.Fatalf("unexpected bookings response: %#v", body)
+	}
+	if repo.LastBookingDate.Format(time.DateOnly) != "2026-05-18" {
+		t.Fatalf("expected booking date 2026-05-18, got %s", repo.LastBookingDate.Format(time.DateOnly))
+	}
+}
+
+func TestGetBranchBookings_WhenDateIsInvalid_ShouldReturnBadRequest(t *testing.T) {
+	server, _ := newTestHTTPServer()
+	branchID := int64(11)
+
+	rec := serveAuthenticatedRequest(t, http.HandlerFunc(server.GetBranchBookings), "/branches/11/bookings?date=18-05-2026", sharedauth.AccessClaims{
+		UserID:     43,
+		Login:      "manager@example.com",
+		RoleID:     3,
+		RoleName:   string(branchesdomain.RoleManager),
+		BusinessID: 7,
+		BranchID:   &branchID,
+	})
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusBadRequest, rec.Code, rec.Body.String())
+	}
+}
+
+func TestGetBranchClients_WhenManagerRequestsAnotherBranch_ShouldReturnForbidden(t *testing.T) {
+	server, _ := newTestHTTPServer()
+	branchID := int64(11)
+
+	rec := serveAuthenticatedRequest(t, http.HandlerFunc(server.GetBranchClients), "/branches/12/clients", sharedauth.AccessClaims{
+		UserID:     43,
+		Login:      "manager@example.com",
+		RoleID:     3,
+		RoleName:   string(branchesdomain.RoleManager),
+		BusinessID: 7,
+		BranchID:   &branchID,
+	})
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusForbidden, rec.Code, rec.Body.String())
 	}
 }
