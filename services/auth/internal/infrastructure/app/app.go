@@ -37,13 +37,13 @@ func New(ctx context.Context) (*App, error) {
 		return nil, err
 	}
 
-	db, err := newPostgres(ctx, cfg)
+	db, err := newPostgres(ctx, &cfg)
 	if err != nil {
 		log.Error("failed to connect postgres", "err", err)
 		return nil, err
 	}
 
-	rdb, err := newRedis(ctx, cfg)
+	rdb, err := newRedis(ctx, &cfg)
 	if err != nil {
 		log.Error("failed to connect redis", "err", err)
 		db.Close()
@@ -128,7 +128,7 @@ func (a *App) Close() {
 	}
 }
 
-func newPostgres(ctx context.Context, cfg config.Config) (*pgxpool.Pool, error) {
+func newPostgres(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
 	pool, err := pgxpool.New(ctx, cfg.DBCfg.DSN)
 	if err != nil {
 		return nil, err
@@ -145,7 +145,7 @@ func newPostgres(ctx context.Context, cfg config.Config) (*pgxpool.Pool, error) 
 	return pool, nil
 }
 
-func newRedis(ctx context.Context, cfg config.Config) (*goredis.Client, error) {
+func newRedis(ctx context.Context, cfg *config.Config) (*goredis.Client, error) {
 	return redisclient.New(ctx, libconfig.RedisConfig{
 		RedisAddr:     cfg.RedisAddr,
 		RedisPassword: cfg.RedisPassword,

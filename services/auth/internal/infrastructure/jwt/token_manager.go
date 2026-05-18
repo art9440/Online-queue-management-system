@@ -63,9 +63,9 @@ func (m *TokenManager) NewAccessToken(user *domain.User) (string, error) {
 	return token.SignedString(m.accessSecret)
 }
 
-func (m *TokenManager) NewRefreshToken(user *domain.User) (string, string, error) {
+func (m *TokenManager) NewRefreshToken(user *domain.User) (tokenString, jti string, err error) {
 	now := time.Now()
-	jti := uuid.NewString()
+	jti = uuid.NewString()
 
 	claims := refreshClaimsDTO{
 		RegisteredClaims: jwt.RegisteredClaims{

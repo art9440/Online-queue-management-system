@@ -21,7 +21,7 @@ type BranchesApp struct {
 	httpServer *http.Server
 }
 
-func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg libconfig.DBConfig) (*BranchesApp, error) {
+func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg *libconfig.DBConfig) (*BranchesApp, error) {
 	log := logger.From(ctx)
 
 	repoPostgres, err := repos.NewBranchesRepoPostgres(dbCfg.DSN)

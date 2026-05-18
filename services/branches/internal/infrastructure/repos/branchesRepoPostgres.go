@@ -21,7 +21,7 @@ func NewBranchesRepoPostgres(dsn string) (*BranchesRepoPostgres, error) {
 		return nil, err
 	}
 
-	if err = db.Ping(); err != nil {
+	if err := db.Ping(); err != nil {
 		return nil, err
 	}
 
@@ -38,7 +38,9 @@ func (r *BranchesRepoPostgres) GetByBusinessID(ctx context.Context, businessID i
 		return nil, err
 	}
 
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	var res []domain.Branch
 

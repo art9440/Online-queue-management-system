@@ -49,13 +49,13 @@ func run(ctx context.Context) error {
 		return err
 	}
 
-	app, err := app.NewApp(ctx, *cfg, *dbCfg)
+	registrationApp, err := app.NewApp(ctx, cfg, dbCfg)
 	if err != nil {
 		log.Error("error creating registration app", "err", err)
 		return err
 	}
 
-	if err := app.Run(ctx); err != nil {
+	if err := registrationApp.Run(ctx); err != nil {
 		log.Error("error starting registration service", "err", err)
 		return err
 	}
