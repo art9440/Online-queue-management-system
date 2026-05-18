@@ -6,7 +6,6 @@ import (
 	"Online-queue-management-system/libs/middleware"
 	"Online-queue-management-system/libs/redisclient"
 	"context"
-	"fmt"
 	"net"
 	"net/http"
 	"time"
@@ -32,19 +31,19 @@ type App struct {
 func New(ctx context.Context) (*App, error) {
 	log := logger.From(ctx)
 
-	cfg, err := config.Load()
+	cfg, err := config.Load(ctx)
 	if err != nil {
 		log.Error("failed to load auth config", "err", err)
 		return nil, err
 	}
 
-	db, err := newPostgres(ctx, cfg)
+	db, err := newPostgres(ctx, &cfg)
 	if err != nil {
 		log.Error("failed to connect postgres", "err", err)
 		return nil, err
 	}
 
-	rdb, err := newRedis(ctx, cfg)
+	rdb, err := newRedis(ctx, &cfg)
 	if err != nil {
 		log.Error("failed to connect redis", "err", err)
 		db.Close()
@@ -129,18 +128,8 @@ func (a *App) Close() {
 	}
 }
 
-func newPostgres(ctx context.Context, cfg config.Config) (*pgxpool.Pool, error) {
-	dsn := fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		cfg.DBUser,
-		cfg.DBPassword,
-		cfg.DBHost,
-		cfg.DBPort,
-		cfg.DBName,
-		cfg.DBSSLMode,
-	)
-
-	pool, err := pgxpool.New(ctx, dsn)
+func newPostgres(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
+	pool, err := pgxpool.New(ctx, cfg.DBCfg.DSN)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +145,7 @@ func newPostgres(ctx context.Context, cfg config.Config) (*pgxpool.Pool, error) 
 	return pool, nil
 }
 
-func newRedis(ctx context.Context, cfg config.Config) (*goredis.Client, error) {
+func newRedis(ctx context.Context, cfg *config.Config) (*goredis.Client, error) {
 	return redisclient.New(ctx, libconfig.RedisConfig{
 		RedisAddr:     cfg.RedisAddr,
 		RedisPassword: cfg.RedisPassword,

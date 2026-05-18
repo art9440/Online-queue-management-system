@@ -20,6 +20,8 @@ type EmailQueue struct {
 	timeOut   time.Duration
 }
 
+type workerIDKey struct{}
+
 func NewEmailQueue(sender Sender, cfg config.QueueConfig) *EmailQueue {
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -66,7 +68,7 @@ func (eq *EmailQueue) worker(workerID int) {
 	defer eq.wg.Done()
 
 	// Создаем контекст для воркера с ID
-	ctx := context.WithValue(eq.ctx, "worker_id", workerID)
+	ctx := context.WithValue(eq.ctx, workerIDKey{}, workerID)
 	log := logger.From(ctx)
 
 	log.Info("email queue worker started", "worker_id", workerID)
@@ -155,6 +157,6 @@ func (eq *EmailQueue) Shutdown() {
 }
 
 // GetStats возвращает статистику очереди
-func (eq *EmailQueue) GetStats() (queueLen int, queueCap int, workers int) {
+func (eq *EmailQueue) GetStats() (queueLen, queueCap, workers int) {
 	return len(eq.queue), cap(eq.queue), eq.workers
 }

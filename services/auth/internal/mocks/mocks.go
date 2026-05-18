@@ -98,7 +98,7 @@ func (m *TokenManager) NewAccessToken(user *domain.User) (string, error) {
 	return "access-" + user.Login, nil
 }
 
-func (m *TokenManager) NewRefreshToken(user *domain.User) (string, string, error) {
+func (m *TokenManager) NewRefreshToken(user *domain.User) (tokenString, jti string, err error) {
 	if m.Err != nil {
 		return "", "", m.Err
 	}

@@ -15,7 +15,7 @@ type Config struct {
 }
 
 func LoadConfig(ctx context.Context) (*Config, error) {
-	//branches config
+	// branches config
 	branchesPort, err := config.MustGet(ctx, "BRANCHES_PORT")
 	if err != nil {
 		return nil, err

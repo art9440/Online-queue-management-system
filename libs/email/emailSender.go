@@ -44,7 +44,11 @@ func (e *EmailSender) SendEmail(ctx context.Context, msg EmailMessage) error {
 		log.Error("failed to dial SMTP", "error", err)
 		return fmt.Errorf("failed to dial SMTP: %w", err)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			log.Error("failed to close SMTP connection", "error", err)
+		}
+	}()
 
 	if err := mail.Send(s, m); err != nil {
 		log.Error("error sending email", "error", err)

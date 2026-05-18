@@ -1,6 +1,8 @@
 package config
 
 import (
+	libconfig "Online-queue-management-system/libs/config"
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -10,12 +12,7 @@ import (
 type Config struct {
 	AuthPort string
 
-	DBHost     string
-	DBPort     string
-	DBUser     string
-	DBPassword string
-	DBName     string
-	DBSSLMode  string
+	DBCfg libconfig.DBConfig
 
 	RedisAddr     string
 	RedisPassword string
@@ -30,7 +27,7 @@ type Config struct {
 	CookieSecure bool
 }
 
-func Load() (Config, error) {
+func Load(ctx context.Context) (Config, error) {
 	redisDB, err := strconv.Atoi(getEnv("REDIS_DB", "0"))
 	if err != nil {
 		return Config{}, fmt.Errorf("parse REDIS_DB: %w", err)
@@ -51,15 +48,15 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("parse COOKIE_SECURE: %w", err)
 	}
 
+	dbCfg, err := libconfig.LoadDBConfig(ctx)
+	if err != nil {
+		return Config{}, fmt.Errorf("load db config: %w", err)
+	}
+
 	return Config{
 		AuthPort: getEnv("AUTH_PORT", "8082"),
 
-		DBHost:     mustEnv("DB_HOST"),
-		DBPort:     mustEnv("DB_PORT"),
-		DBUser:     mustEnv("DB_USER"),
-		DBPassword: mustEnv("DB_PASSWORD"),
-		DBName:     mustEnv("POSTGRES_DB"),
-		DBSSLMode:  getEnv("DB_SSLMODE", "disable"),
+		DBCfg: *dbCfg,
 
 		RedisAddr:     mustEnv("REDIS_ADDR"),
 		RedisPassword: getEnv("REDIS_PASSWORD", ""),
