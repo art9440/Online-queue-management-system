@@ -19,7 +19,7 @@ import (
 
 func TestGetBranches_WhenUserIsMissingFromContext_ShouldReturnUnauthorized(t *testing.T) {
 	server, _ := newTestHTTPServer()
-	req := httptest.NewRequest(http.MethodGet, "/branches", nil)
+	req := httptest.NewRequest(http.MethodGet, "/branches", http.NoBody)
 	rec := httptest.NewRecorder()
 
 	server.GetBranches(rec, req)
@@ -115,7 +115,7 @@ func serveAuthenticatedBranchesRequest(t *testing.T, server *HttpServer, claims 
 
 	accessToken := signAccessToken(t, claims)
 
-	req := httptest.NewRequest(http.MethodGet, "/branches", nil)
+	req := httptest.NewRequest(http.MethodGet, "/branches", http.NoBody)
 	req.AddCookie(&http.Cookie{Name: "access_token", Value: accessToken})
 	rec := httptest.NewRecorder()
 

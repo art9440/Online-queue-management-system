@@ -12,6 +12,12 @@ linters:
     - gocritic
 
   settings:
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
     gocritic:
       enabled-tags:
         - performance

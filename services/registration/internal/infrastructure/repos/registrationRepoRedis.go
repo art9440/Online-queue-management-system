@@ -28,7 +28,7 @@ func NewRegistrationRepoRedis(client *redis.Client) *RegistrationRepoRedis {
 	}
 }
 
-func (r *RegistrationRepoRedis) Save(ctx context.Context, p pending.PendingRegistration) error {
+func (r *RegistrationRepoRedis) Save(ctx context.Context, p *pending.PendingRegistration) error {
 	key := fmt.Sprintf("%s:%s", pendingPrefix, p.ID)
 
 	data, err := json.Marshal(p)
@@ -74,7 +74,7 @@ func (r *RegistrationRepoRedis) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (r *RegistrationRepoRedis) GetAndValidate(ctx context.Context, id string, code string) (pending.PendingRegistration, error) {
+func (r *RegistrationRepoRedis) GetAndValidate(ctx context.Context, id, code string) (pending.PendingRegistration, error) {
 	key := fmt.Sprintf("%s:%s", pendingPrefix, id)
 
 	script := redis.NewScript(`

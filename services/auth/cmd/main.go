@@ -4,7 +4,6 @@ import (
 	"Online-queue-management-system/libs/logger"
 	"context"
 	"log/slog"
-	"os"
 	"os/signal"
 	"syscall"
 
@@ -27,12 +26,14 @@ func main() {
 	a, err := app.New(ctx)
 	if err != nil {
 		slog.Error("failed to initialize auth app", "err", err)
-		os.Exit(1)
+		stop()
+		return
 	}
 	defer a.Close()
 
 	if err := a.Run(ctx); err != nil {
 		slog.Error("auth app stopped with error", "err", err)
-		os.Exit(1)
+		stop()
+		return
 	}
 }

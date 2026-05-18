@@ -59,7 +59,7 @@ func TestHandleRefresh_WhenSessionExists_ShouldRotateCookies(t *testing.T) {
 	deps.tokens.RefreshClaims["old-refresh-token"] = domain.RefreshClaims{UserID: 42, JTI: "old-jti"}
 	deps.sessions.Exists["old-jti:42"] = true
 
-	req := httptest.NewRequest(stdhttp.MethodPost, "/auth/refresh", nil)
+	req := httptest.NewRequest(stdhttp.MethodPost, "/auth/refresh", stdhttp.NoBody)
 	req.AddCookie(&stdhttp.Cookie{Name: "refresh_token", Value: "old-refresh-token"})
 	rec := httptest.NewRecorder()
 
@@ -75,7 +75,7 @@ func TestHandleRefresh_WhenSessionExists_ShouldRotateCookies(t *testing.T) {
 
 func TestHandleRefresh_WhenCookieIsMissing_ShouldReturnUnauthorized(t *testing.T) {
 	handler, _ := newTestHandler()
-	req := httptest.NewRequest(stdhttp.MethodPost, "/auth/refresh", nil)
+	req := httptest.NewRequest(stdhttp.MethodPost, "/auth/refresh", stdhttp.NoBody)
 	rec := httptest.NewRecorder()
 
 	handler.handleRefresh(rec, req)
@@ -86,7 +86,7 @@ func TestHandleRefresh_WhenCookieIsMissing_ShouldReturnUnauthorized(t *testing.T
 func TestHandleLogout_WhenRefreshCookieExists_ShouldDeleteSessionAndClearCookies(t *testing.T) {
 	handler, deps := newTestHandler()
 	deps.tokens.RefreshClaims["refresh-token"] = domain.RefreshClaims{UserID: 42, JTI: "refresh-jti"}
-	req := httptest.NewRequest(stdhttp.MethodPost, "/auth/logout", nil)
+	req := httptest.NewRequest(stdhttp.MethodPost, "/auth/logout", stdhttp.NoBody)
 	req.AddCookie(&stdhttp.Cookie{Name: "refresh_token", Value: "refresh-token"})
 	rec := httptest.NewRecorder()
 
@@ -115,7 +115,7 @@ func TestHandleMe_WhenAccessTokenIsValid_ShouldReturnClaims(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new access token: %v", err)
 	}
-	req := httptest.NewRequest(stdhttp.MethodGet, "/auth/me", nil)
+	req := httptest.NewRequest(stdhttp.MethodGet, "/auth/me", stdhttp.NoBody)
 	req.AddCookie(&stdhttp.Cookie{Name: "access_token", Value: accessToken})
 	rec := httptest.NewRecorder()
 
