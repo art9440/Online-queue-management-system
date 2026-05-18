@@ -136,20 +136,20 @@ func TestGetBranchClients_WhenBusinessAdminOwnsBranch_ShouldReturnClients(t *tes
 	}
 }
 
-func TestGetBranchBookings_WhenManagerRequestsAnotherBranch_ShouldReturnForbidden(t *testing.T) {
+func TestGetBranchAppointments_WhenManagerRequestsAnotherBranch_ShouldReturnForbidden(t *testing.T) {
 	ctx := context.Background()
 	repo := mocks.NewBranchesRepository()
 	svc := New(repo)
 	managerBranchID := int64(11)
 
-	_, err := svc.GetBranchBookings(ctx, &auth.AccessClaims{
+	_, err := svc.GetBranchAppointments(ctx, &auth.AccessClaims{
 		RoleName: string(domain.RoleManager),
 		BranchID: &managerBranchID,
 	}, 12, time.Now())
 	if !errors.Is(err, domain.ErrForbidden) {
 		t.Fatalf("expected forbidden, got %v", err)
 	}
-	if repo.BookingsByBranchCalls != 0 {
-		t.Fatalf("expected bookings repository not to be called, got %d", repo.BookingsByBranchCalls)
+	if repo.AppointmentsByBranchCalls != 0 {
+		t.Fatalf("expected appointments repository not to be called, got %d", repo.AppointmentsByBranchCalls)
 	}
 }

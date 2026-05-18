@@ -41,17 +41,17 @@ func (s *BranchesService) GetBranchClients(ctx context.Context, user *auth.Acces
 	return s.repoPostgres.GetClientsByBranchID(ctx, branchID)
 }
 
-func (s *BranchesService) GetBranchBookings(
+func (s *BranchesService) GetBranchAppointments(
 	ctx context.Context,
 	user *auth.AccessClaims,
 	branchID int64,
 	date time.Time,
-) ([]domain.Booking, error) {
+) ([]domain.Appointment, error) {
 	if err := s.ensureBranchAccess(ctx, user, branchID); err != nil {
 		return nil, err
 	}
 
-	return s.repoPostgres.GetBookingsByBranchIDAndDate(ctx, branchID, date)
+	return s.repoPostgres.GetAppointmentsByBranchIDAndDate(ctx, branchID, date)
 }
 
 func (s *BranchesService) ensureBranchAccess(ctx context.Context, user *auth.AccessClaims, branchID int64) error {

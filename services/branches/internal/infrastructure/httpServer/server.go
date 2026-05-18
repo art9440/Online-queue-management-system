@@ -4,6 +4,7 @@ import (
 	"Online-queue-management-system/libs/auth"
 	"Online-queue-management-system/services/branches/internal/application/service"
 	"Online-queue-management-system/services/branches/internal/domain"
+	"Online-queue-management-system/services/branches/internal/infrastructure/dto"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -16,6 +17,12 @@ type HttpServer struct {
 	svc *service.BranchesService
 }
 
+const (
+	invalidBranchIDMessage = "invalid branch id"
+	invalidDateMessage     = "invalid date"
+	unauthorizedMessage    = "unauthorized"
+)
+
 func NewHttpServer(svc *service.BranchesService) *HttpServer {
 	return &HttpServer{svc: svc}
 }
@@ -24,7 +31,7 @@ func (s *HttpServer) GetBranches(w http.ResponseWriter, r *http.Request) {
 
 	user := auth.FromContext(r.Context())
 	if user == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		http.Error(w, unauthorizedMessage, http.StatusUnauthorized)
 		return
 	}
 
@@ -40,13 +47,13 @@ func (s *HttpServer) GetBranches(w http.ResponseWriter, r *http.Request) {
 func (s *HttpServer) GetBranchClients(w http.ResponseWriter, r *http.Request) {
 	user := auth.FromContext(r.Context())
 	if user == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		http.Error(w, unauthorizedMessage, http.StatusUnauthorized)
 		return
 	}
 
 	branchID, err := branchIDFromRequest(r)
 	if err != nil {
-		http.Error(w, "invalid branch id", http.StatusBadRequest)
+		http.Error(w, invalidBranchIDMessage, http.StatusBadRequest)
 		return
 	}
 
@@ -56,35 +63,35 @@ func (s *HttpServer) GetBranchClients(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, clients)
+	writeJSON(w, http.StatusOK, dto.ClientsFromDomain(clients))
 }
 
-func (s *HttpServer) GetBranchBookings(w http.ResponseWriter, r *http.Request) {
+func (s *HttpServer) GetBranchAppointments(w http.ResponseWriter, r *http.Request) {
 	user := auth.FromContext(r.Context())
 	if user == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		http.Error(w, unauthorizedMessage, http.StatusUnauthorized)
 		return
 	}
 
 	branchID, err := branchIDFromRequest(r)
 	if err != nil {
-		http.Error(w, "invalid branch id", http.StatusBadRequest)
+		http.Error(w, invalidBranchIDMessage, http.StatusBadRequest)
 		return
 	}
 
 	date, err := time.Parse(time.DateOnly, r.URL.Query().Get("date"))
 	if err != nil {
-		http.Error(w, "invalid date", http.StatusBadRequest)
+		http.Error(w, invalidDateMessage, http.StatusBadRequest)
 		return
 	}
 
-	bookings, err := s.svc.GetBranchBookings(r.Context(), user, branchID, date)
+	appointments, err := s.svc.GetBranchAppointments(r.Context(), user, branchID, date)
 	if err != nil {
 		writeServiceError(w, err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, bookings)
+	writeJSON(w, http.StatusOK, dto.AppointmentsFromDomain(appointments))
 }
 
 func writeJSON(w http.ResponseWriter, status int, data any) {

@@ -4,6 +4,7 @@ import (
 	sharedauth "Online-queue-management-system/libs/auth"
 	"Online-queue-management-system/services/branches/internal/application/service"
 	branchesdomain "Online-queue-management-system/services/branches/internal/domain"
+	branchesdto "Online-queue-management-system/services/branches/internal/infrastructure/dto"
 	"Online-queue-management-system/services/branches/internal/mocks"
 	"encoding/json"
 	"errors"
@@ -209,22 +210,22 @@ func TestGetBranchClients_WhenBusinessAdminIsAuthorized_ShouldReturnClients(t *t
 		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
 	}
 
-	var body []branchesdomain.Client
+	var body []branchesdto.ClientResponse
 	decodeJSON(t, rec, &body)
 	if len(body) != 1 || body[0].ID != 5 {
 		t.Fatalf("unexpected clients response: %#v", body)
 	}
 }
 
-func TestGetBranchBookings_WhenManagerIsAuthorized_ShouldReturnBookings(t *testing.T) {
+func TestGetBranchAppointments_WhenManagerIsAuthorized_ShouldReturnAppointments(t *testing.T) {
 	server, repo := newTestHTTPServer()
 	branchID := int64(11)
 	date := time.Date(2026, time.May, 18, 0, 0, 0, 0, time.UTC)
-	repo.SetBookings(branchID, date, []branchesdomain.Booking{
+	repo.SetAppointments(branchID, date, []branchesdomain.Appointment{
 		{ID: 21, BranchID: branchID, Client: branchesdomain.Client{ID: 5, Name: "Alex", Surname: "Stone"}},
 	})
 
-	rec := serveAuthenticatedRequest(t, http.HandlerFunc(server.GetBranchBookings), "/branches/11/bookings?date=2026-05-18", sharedauth.AccessClaims{
+	rec := serveAuthenticatedRequest(t, http.HandlerFunc(server.GetBranchAppointments), "/branches/11/bookings?date=2026-05-18", sharedauth.AccessClaims{
 		UserID:     43,
 		Login:      "manager@example.com",
 		RoleID:     3,
@@ -237,21 +238,21 @@ func TestGetBranchBookings_WhenManagerIsAuthorized_ShouldReturnBookings(t *testi
 		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
 	}
 
-	var body []branchesdomain.Booking
+	var body []branchesdto.AppointmentResponse
 	decodeJSON(t, rec, &body)
 	if len(body) != 1 || body[0].ID != 21 {
-		t.Fatalf("unexpected bookings response: %#v", body)
+		t.Fatalf("unexpected appointments response: %#v", body)
 	}
-	if repo.LastBookingDate.Format(time.DateOnly) != "2026-05-18" {
-		t.Fatalf("expected booking date 2026-05-18, got %s", repo.LastBookingDate.Format(time.DateOnly))
+	if repo.LastAppointmentDate.Format(time.DateOnly) != "2026-05-18" {
+		t.Fatalf("expected appointment date 2026-05-18, got %s", repo.LastAppointmentDate.Format(time.DateOnly))
 	}
 }
 
-func TestGetBranchBookings_WhenDateIsInvalid_ShouldReturnBadRequest(t *testing.T) {
+func TestGetBranchAppointments_WhenDateIsInvalid_ShouldReturnBadRequest(t *testing.T) {
 	server, _ := newTestHTTPServer()
 	branchID := int64(11)
 
-	rec := serveAuthenticatedRequest(t, http.HandlerFunc(server.GetBranchBookings), "/branches/11/bookings?date=18-05-2026", sharedauth.AccessClaims{
+	rec := serveAuthenticatedRequest(t, http.HandlerFunc(server.GetBranchAppointments), "/branches/11/bookings?date=18-05-2026", sharedauth.AccessClaims{
 		UserID:     43,
 		Login:      "manager@example.com",
 		RoleID:     3,

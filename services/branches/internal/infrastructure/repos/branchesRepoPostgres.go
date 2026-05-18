@@ -137,11 +137,11 @@ func (r *BranchesRepoPostgres) GetClientsByBranchID(ctx context.Context, branchI
 	return clients, nil
 }
 
-func (r *BranchesRepoPostgres) GetBookingsByBranchIDAndDate(
+func (r *BranchesRepoPostgres) GetAppointmentsByBranchIDAndDate(
 	ctx context.Context,
 	branchID int64,
 	date time.Time,
-) ([]domain.Booking, error) {
+) ([]domain.Appointment, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT
 			a.id,
@@ -182,50 +182,50 @@ func (r *BranchesRepoPostgres) GetBookingsByBranchIDAndDate(
 		_ = rows.Close()
 	}()
 
-	var bookings []domain.Booking
+	var appointments []domain.Appointment
 	for rows.Next() {
-		var booking domain.Booking
+		var appointment domain.Appointment
 		var email sql.NullString
 		var phone sql.NullString
 		var tgUsername sql.NullString
 		var comment sql.NullString
 
 		err := rows.Scan(
-			&booking.ID,
-			&booking.BranchID,
-			&booking.Client.ID,
+			&appointment.ID,
+			&appointment.BranchID,
+			&appointment.Client.ID,
 			&email,
 			&phone,
-			&booking.Client.Name,
-			&booking.Client.Surname,
+			&appointment.Client.Name,
+			&appointment.Client.Surname,
 			&tgUsername,
-			&booking.Client.CreatedAt,
-			&booking.EmployeeID,
-			&booking.EmployeeName,
-			&booking.EmployeeSurname,
-			&booking.ServiceID,
-			&booking.ServiceName,
-			&booking.StartTime,
-			&booking.EndTime,
-			&booking.Status,
+			&appointment.Client.CreatedAt,
+			&appointment.EmployeeID,
+			&appointment.EmployeeName,
+			&appointment.EmployeeSurname,
+			&appointment.ServiceID,
+			&appointment.ServiceName,
+			&appointment.StartTime,
+			&appointment.EndTime,
+			&appointment.Status,
 			&comment,
-			&booking.CreatedAt,
+			&appointment.CreatedAt,
 		)
 		if err != nil {
 			return nil, err
 		}
 
-		booking.Client.Email = nullableString(email)
-		booking.Client.Phone = nullableString(phone)
-		booking.Client.TgUsername = nullableString(tgUsername)
-		booking.Comment = nullableString(comment)
-		bookings = append(bookings, booking)
+		appointment.Client.Email = nullableString(email)
+		appointment.Client.Phone = nullableString(phone)
+		appointment.Client.TgUsername = nullableString(tgUsername)
+		appointment.Comment = nullableString(comment)
+		appointments = append(appointments, appointment)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return bookings, nil
+	return appointments, nil
 }
 
 type clientScanner interface {
