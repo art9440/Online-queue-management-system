@@ -21,7 +21,7 @@ func MustGet(ctx context.Context, key string) (string, error) {
 	return val, nil
 }
 
-func Get(ctx context.Context, key string, defaultVal string) string {
+func Get(ctx context.Context, key, defaultVal string) string {
 	log := logger.From(ctx)
 
 	val := os.Getenv(key)

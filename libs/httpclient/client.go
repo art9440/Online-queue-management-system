@@ -60,7 +60,7 @@ func (c *Client) Do(ctx context.Context, req *http.Request) (*http.Response, err
 func (c *Client) Get(ctx context.Context, url string) (*http.Response, error) {
 	log := logger.From(ctx)
 	log.Debug("Creating GET request", "url", url)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		log.Error("Error creating GET request", "url", url, "error", err)
 		return nil, fmt.Errorf(ErrCreatingRequest, err)
@@ -69,7 +69,7 @@ func (c *Client) Get(ctx context.Context, url string) (*http.Response, error) {
 	return c.Do(ctx, req)
 }
 
-func (c *Client) Post(ctx context.Context, url string, bodyType string, body io.Reader) (*http.Response, error) {
+func (c *Client) Post(ctx context.Context, url, bodyType string, body io.Reader) (*http.Response, error) {
 	log := logger.From(ctx)
 	log.Debug("Creating POST request", "url", url)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
@@ -84,7 +84,7 @@ func (c *Client) Post(ctx context.Context, url string, bodyType string, body io.
 	return c.Do(ctx, req)
 }
 
-func (c *Client) Put(ctx context.Context, url string, bodyType string, body io.Reader) (*http.Response, error) {
+func (c *Client) Put(ctx context.Context, url, bodyType string, body io.Reader) (*http.Response, error) {
 	log := logger.From(ctx)
 	log.Debug("Creating PUT request", "url", url)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, body)
@@ -101,7 +101,7 @@ func (c *Client) Put(ctx context.Context, url string, bodyType string, body io.R
 func (c *Client) Delete(ctx context.Context, url string) (*http.Response, error) {
 	log := logger.From(ctx)
 	log.Debug("Creating DELETE request", "url", url)
-	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, http.NoBody)
 	if err != nil {
 		log.Error("Error creating DELETE request", "url", url, "error", err)
 		return nil, fmt.Errorf(ErrCreatingRequest, err)

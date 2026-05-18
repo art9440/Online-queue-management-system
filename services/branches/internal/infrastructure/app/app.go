@@ -1,8 +1,8 @@
 package app
 
 import (
-	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/auth"
+	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/logger"
 	"Online-queue-management-system/libs/middleware"
 	branchesConfig "Online-queue-management-system/services/branches/config"
@@ -21,7 +21,7 @@ type BranchesApp struct {
 	httpServer *http.Server
 }
 
-func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg libconfig.DBConfig) (*BranchesApp, error) {
+func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg *libconfig.DBConfig) (*BranchesApp, error) {
 	log := logger.From(ctx)
 
 	repoPostgres, err := repos.NewBranchesRepoPostgres(dbCfg.DSN)

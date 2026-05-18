@@ -9,30 +9,41 @@ import (
 	"os"
 	"time"
 
-	"github.com/pressly/goose/v3"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	dsn := buildDSN()
 	migrationsDir := getEnv("MIGRATIONS_DIR", "migrations")
 
 	db, err := waitForDB(dsn, 30, 2*time.Second)
 	if err != nil {
-		log.Fatalf("database is not ready: %v", err)
+		return fmt.Errorf("database is not ready: %w", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("db close: %v", err)
+		}
+	}()
 
 	if err := goose.SetDialect("postgres"); err != nil {
-		log.Fatalf("goose set dialect: %v", err)
+		return fmt.Errorf("goose set dialect: %w", err)
 	}
 
 	log.Println("running migrations...")
 	if err := goose.Up(db, migrationsDir); err != nil && !errors.Is(err, goose.ErrNoNextVersion) {
-		log.Fatalf("goose up: %v", err)
+		return fmt.Errorf("goose up: %w", err)
 	}
 
 	log.Println("migrations applied successfully")
+	return nil
 }
 
 func buildDSN() string {

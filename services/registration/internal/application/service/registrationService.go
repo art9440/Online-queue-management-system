@@ -63,7 +63,7 @@ func (s *RegistrationService) Register(ctx context.Context, req RegisterInput) (
 	}
 
 	log.Info("creating pending registration", "registrationID", pendingItem.ID)
-	if err := s.repoRedis.Save(ctx, pendingItem); err != nil {
+	if err := s.repoRedis.Save(ctx, &pendingItem); err != nil {
 		log.Error("failed to save pending registration", "registrationID", pendingItem.ID, "err", err)
 		return RegisterOutput{}, err
 	}
@@ -122,7 +122,7 @@ func (s *RegistrationService) Verify(ctx context.Context, req VerifyInput) error
 
 		pendingItem.ClientSlug = &slug
 
-		err = s.repoPostgres.CreateUserWithBusiness(ctx, pendingItem)
+		err = s.repoPostgres.CreateUserWithBusiness(ctx, &pendingItem)
 		if err == nil {
 			return nil
 		}
@@ -287,12 +287,4 @@ func generateSlug() (string, error) {
 	}
 
 	return base64.URLEncoding.EncodeToString(b), nil
-}
-
-func isUniqueViolation(err error, constraint string) bool {
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
-		return pgErr.Code == "23505" && pgErr.ConstraintName == constraint
-	}
-	return false
 }
