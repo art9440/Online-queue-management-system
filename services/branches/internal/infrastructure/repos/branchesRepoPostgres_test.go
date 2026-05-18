@@ -16,7 +16,11 @@ func TestGetByBusinessID_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create mock db: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("failed to close db: %v", err)
+		}
+	}()
 
 	expectedBranches := []domain.Branch{
 		{ID: 1, BusinessID: 100, Name: "Branch 1", Address: "Address 1"},
@@ -58,7 +62,11 @@ func TestGetByBusinessID_Empty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create mock db: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("failed to close db: %v", err)
+		}
+	}()
 
 	rows := sqlmock.NewRows([]string{"id", "business_id", "name", "address"})
 
@@ -90,7 +98,11 @@ func TestGetByBusinessID_QueryError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create mock db: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("failed to close db: %v", err)
+		}
+	}()
 
 	expectedErr := errors.New("database error")
 
@@ -122,7 +134,11 @@ func TestGetByID_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create mock db: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("failed to close db: %v", err)
+		}
+	}()
 
 	expectedBranch := domain.Branch{ID: 1, BusinessID: 100, Name: "Branch 1", Address: "Address 1"}
 
@@ -160,7 +176,11 @@ func TestGetByID_NotFound(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create mock db: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("failed to close db: %v", err)
+		}
+	}()
 
 	mock.ExpectQuery("SELECT id, business_id, name, address.*FROM branches.*WHERE id = \\$1").
 		WithArgs(int64(999)).
@@ -190,7 +210,11 @@ func TestGetByID_QueryError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create mock db: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("failed to close db: %v", err)
+		}
+	}()
 
 	expectedErr := errors.New("database error")
 
@@ -222,7 +246,11 @@ func TestGetEmployeesByBranchID_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create mock db: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("failed to close db: %v", err)
+		}
+	}()
 
 	expectedEmployees := []domain.Employee{
 		{ID: 1, BranchID: 1, Name: "John", Surname: "Doe", Position: "Specialist"},
@@ -264,7 +292,11 @@ func TestGetEmployeesByBranchID_Empty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create mock db: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("failed to close db: %v", err)
+		}
+	}()
 
 	rows := sqlmock.NewRows([]string{"id", "branch_id", "name", "surname", "position"})
 
@@ -296,7 +328,11 @@ func TestGetEmployeesByBranchID_QueryError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create mock db: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("failed to close db: %v", err)
+		}
+	}()
 
 	expectedErr := errors.New("database error")
 
@@ -328,7 +364,11 @@ func TestGetEmployeesByBranchID_ScanError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create mock db: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("failed to close db: %v", err)
+		}
+	}()
 
 	rows := sqlmock.NewRows([]string{"id", "branch_id", "name", "surname", "position"}).
 		AddRow("invalid", 1, "John", "Doe", "Specialist")

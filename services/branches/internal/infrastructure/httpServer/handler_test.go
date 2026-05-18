@@ -16,10 +16,6 @@ import (
 	"testing"
 )
 
-type contextKey string
-
-const userKey contextKey = "user"
-
 func createContextWithUser(t *testing.T, user *auth.AccessClaims) context.Context {
 	ctx := context.Background()
 	// Use auth.ContextWithUser to properly set the user in context
@@ -59,7 +55,7 @@ func TestGetBranches_Success(t *testing.T) {
 		BusinessID: 100,
 	}
 
-	req := httptest.NewRequest("GET", "/branches", nil)
+	req := httptest.NewRequest("GET", "/branches", http.NoBody)
 	req = req.WithContext(createContextWithUser(t, user))
 	rec := httptest.NewRecorder()
 
@@ -88,7 +84,7 @@ func TestGetBranches_Unauthorized(t *testing.T) {
 	svc := service.New(mockRepo)
 	server := NewHttpServer(svc)
 
-	req := httptest.NewRequest("GET", "/branches", nil)
+	req := httptest.NewRequest("GET", "/branches", http.NoBody)
 	req = req.WithContext(context.Background())
 	rec := httptest.NewRecorder()
 
@@ -119,7 +115,7 @@ func TestGetBranches_ServiceError(t *testing.T) {
 		BusinessID: 100,
 	}
 
-	req := httptest.NewRequest("GET", "/branches", nil)
+	req := httptest.NewRequest("GET", "/branches", http.NoBody)
 	req = req.WithContext(createContextWithUser(t, user))
 	rec := httptest.NewRecorder()
 
@@ -171,7 +167,7 @@ func TestGetBranchEmployees_Success(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /branches/{id}/employees", server.GetBranchEmployees)
 
-	req := httptest.NewRequest("GET", "/branches/1/employees", nil)
+	req := httptest.NewRequest("GET", "/branches/1/employees", http.NoBody)
 	req = req.WithContext(createContextWithUser(t, user))
 	rec := httptest.NewRecorder()
 
@@ -200,7 +196,7 @@ func TestGetBranchEmployees_Unauthorized(t *testing.T) {
 	svc := service.New(mockRepo)
 	server := NewHttpServer(svc)
 
-	req := httptest.NewRequest("GET", "/branches/1/employees", nil)
+	req := httptest.NewRequest("GET", "/branches/1/employees", http.NoBody)
 	req = req.WithContext(context.Background())
 	rec := httptest.NewRecorder()
 
@@ -230,7 +226,7 @@ func TestGetBranchEmployees_InvalidBranchID(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /branches/{id}/employees", server.GetBranchEmployees)
 
-	req := httptest.NewRequest("GET", "/branches/invalid/employees", nil)
+	req := httptest.NewRequest("GET", "/branches/invalid/employees", http.NoBody)
 	req = req.WithContext(createContextWithUser(t, user))
 	rec := httptest.NewRecorder()
 
@@ -260,7 +256,7 @@ func TestGetBranchEmployees_NegativeBranchID(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /branches/{id}/employees", server.GetBranchEmployees)
 
-	req := httptest.NewRequest("GET", "/branches/-1/employees", nil)
+	req := httptest.NewRequest("GET", "/branches/-1/employees", http.NoBody)
 	req = req.WithContext(createContextWithUser(t, user))
 	rec := httptest.NewRecorder()
 
@@ -300,7 +296,7 @@ func TestGetBranchEmployees_ServiceError(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /branches/{id}/employees", server.GetBranchEmployees)
 
-	req := httptest.NewRequest("GET", "/branches/1/employees", nil)
+	req := httptest.NewRequest("GET", "/branches/invalid/employees", http.NoBody)
 	req = req.WithContext(createContextWithUser(t, user))
 	rec := httptest.NewRecorder()
 
