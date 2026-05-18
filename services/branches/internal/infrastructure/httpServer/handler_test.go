@@ -296,7 +296,7 @@ func TestGetBranchEmployees_ServiceError(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /branches/{id}/employees", server.GetBranchEmployees)
 
-	req := httptest.NewRequest("GET", "/branches/invalid/employees", http.NoBody)
+	req := httptest.NewRequest("GET", "/branches/1/employees", http.NoBody)
 	req = req.WithContext(createContextWithUser(t, user))
 	rec := httptest.NewRecorder()
 
