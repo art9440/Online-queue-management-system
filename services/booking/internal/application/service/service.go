@@ -117,8 +117,12 @@ func (s *BookingService) CancelAppointment(
 
 func (s *BookingService) CreateAppointment(
 	ctx context.Context,
-	input domain.CreateAppointmentInput,
+	input *domain.CreateAppointmentInput,
 ) (domain.CreateAppointmentOutput, error) {
+	if input == nil {
+		return domain.CreateAppointmentOutput{}, domain.ErrInvalidClient
+	}
+
 	if input.BranchID <= 0 {
 		return domain.CreateAppointmentOutput{}, liberrors.ErrInvalidBranchID
 	}

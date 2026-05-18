@@ -97,7 +97,7 @@ func (s *HttpServer) createAppointment(w http.ResponseWriter, r *http.Request, r
 		"start_time", startTime,
 	)
 
-	appointment, err := s.svc.CreateAppointment(ctx, input)
+	appointment, err := s.svc.CreateAppointment(ctx, &input)
 	if err != nil {
 		log.Error(
 			"failed to create appointment for client",
@@ -142,7 +142,7 @@ func (s *HttpServer) createAppointment(w http.ResponseWriter, r *http.Request, r
 		return
 	}
 
-	response := dto.CreateAppointmentResponseFromDomain(appointment)
+	response := dto.CreateAppointmentResponseFromDomain(&appointment)
 
 	log.Info(
 		"appointment successfully created for client",
@@ -409,7 +409,7 @@ func (s *HttpServer) GetAppointmentByID(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	response := dto.AppointmentFromDomain(appointment)
+	response := dto.AppointmentFromDomain(&appointment)
 
 	log.Info(
 		"appointment by id successfully received",

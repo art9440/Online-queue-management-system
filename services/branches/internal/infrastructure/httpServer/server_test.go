@@ -1,7 +1,6 @@
 package httpserver
 
 import (
-	"Online-queue-management-system/libs/auth"
 	sharedauth "Online-queue-management-system/libs/auth"
 	"Online-queue-management-system/services/branches/internal/application/service"
 	branchesdomain "Online-queue-management-system/services/branches/internal/domain"
@@ -44,7 +43,7 @@ func TestGetBranches_WhenBusinessAdminIsAuthorized_ShouldReturnBusinessBranches(
 		UserID:     42,
 		Login:      "owner@example.com",
 		RoleID:     2,
-		RoleName:   string(auth.RoleBusinessAdmin),
+		RoleName:   string(sharedauth.RoleBusinessAdmin),
 		BusinessID: 7,
 	})
 
@@ -73,7 +72,7 @@ func TestGetBranches_WhenManagerIsAuthorized_ShouldReturnManagerBranch(t *testin
 		UserID:     43,
 		Login:      "manager@example.com",
 		RoleID:     3,
-		RoleName:   string(auth.RoleManager),
+		RoleName:   string(sharedauth.RoleManager),
 		BusinessID: 7,
 		BranchID:   &branchID,
 	})
@@ -99,7 +98,7 @@ func TestGetBranches_WhenRoleIsForbidden_ShouldReturnInternalServerErrorWithForb
 		UserID:     44,
 		Login:      "employee@example.com",
 		RoleID:     4,
-		RoleName:   string(auth.RoleEmployee),
+		RoleName:   string(sharedauth.RoleEmployee),
 		BusinessID: 7,
 	})
 
@@ -168,7 +167,7 @@ func TestGetBranches_WhenRepositoryFails_ShouldReturnInternalServerError(t *test
 		UserID:     42,
 		Login:      "owner@example.com",
 		RoleID:     2,
-		RoleName:   string(auth.RoleBusinessAdmin),
+		RoleName:   string(sharedauth.RoleBusinessAdmin),
 		BusinessID: 7,
 	})
 

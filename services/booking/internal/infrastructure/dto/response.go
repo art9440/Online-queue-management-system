@@ -41,7 +41,7 @@ func AvailableSlotsFromDomain(slots []domain.AvailableSlot) []AvailableSlotRespo
 	return result
 }
 
-func AppointmentFromDomain(appointment domain.Appointment) AppointmentResponse {
+func AppointmentFromDomain(appointment *domain.Appointment) AppointmentResponse {
 	return AppointmentResponse{
 		ID:         appointment.ID,
 		ClientID:   appointment.ClientID,
@@ -58,8 +58,8 @@ func AppointmentFromDomain(appointment domain.Appointment) AppointmentResponse {
 func AppointmentsFromDomain(appointments []domain.Appointment) []AppointmentResponse {
 	result := make([]AppointmentResponse, 0, len(appointments))
 
-	for _, appointment := range appointments {
-		result = append(result, AppointmentFromDomain(appointment))
+	for i := range appointments {
+		result = append(result, AppointmentFromDomain(&appointments[i]))
 	}
 
 	return result
@@ -98,7 +98,7 @@ type ServiceResponse struct {
 }
 
 func CreateAppointmentResponseFromDomain(
-	output domain.CreateAppointmentOutput,
+	output *domain.CreateAppointmentOutput,
 ) CreateAppointmentResponse {
 	return CreateAppointmentResponse{
 		AppointmentID: output.AppointmentID,

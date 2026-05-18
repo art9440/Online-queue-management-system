@@ -21,7 +21,7 @@ func NewBookingRepoPostgres(dsn string) (*BookingRepoPostgres, error) {
 		return nil, err
 	}
 
-	if err = db.Ping(); err != nil {
+	if err := db.Ping(); err != nil {
 		return nil, err
 	}
 
@@ -52,7 +52,9 @@ func (r *BookingRepoPostgres) GetAppointmentsByEmployeeID(
 	if err != nil {
 		return nil, fmt.Errorf("query appointments by employee id: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	appointments := make([]domain.Appointment, 0)
 
@@ -248,7 +250,9 @@ func (r *BookingRepoPostgres) GetAvailableSlots(
 	if err != nil {
 		return nil, fmt.Errorf("query available slots: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	slots := make([]domain.AvailableSlot, 0)
 
@@ -272,7 +276,7 @@ func (r *BookingRepoPostgres) GetAvailableSlots(
 func (r *BookingRepoPostgres) CheckClientExists(
 	ctx context.Context,
 	client domain.ClientInput,
-) (int64, bool, error) {
+) (clientID int64, exists bool, err error) {
 	const query = `
 		SELECT id
 		FROM clients
@@ -280,9 +284,7 @@ func (r *BookingRepoPostgres) CheckClientExists(
 		LIMIT 1
 	`
 
-	var clientID int64
-
-	err := r.db.QueryRowContext(ctx, query, client.Phone).Scan(&clientID)
+	err = r.db.QueryRowContext(ctx, query, client.Phone).Scan(&clientID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return 0, false, nil
@@ -338,7 +340,7 @@ func (r *BookingRepoPostgres) CreateClient(
 func (r *BookingRepoPostgres) CreateAppointment(
 	ctx context.Context,
 	clientID int64,
-	input domain.CreateAppointmentInput,
+	input *domain.CreateAppointmentInput,
 ) (domain.CreateAppointmentOutput, error) {
 	const query = `
 		WITH created_appointment AS (

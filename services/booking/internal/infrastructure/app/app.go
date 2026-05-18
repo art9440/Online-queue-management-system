@@ -24,7 +24,7 @@ type BookingApp struct {
 func NewApp(
 	ctx context.Context,
 	cfg config.BookingConfig,
-	dbCfg libconfig.DBConfig,
+	dbCfg *libconfig.DBConfig,
 ) (*BookingApp, error) {
 	log := logger.From(ctx)
 

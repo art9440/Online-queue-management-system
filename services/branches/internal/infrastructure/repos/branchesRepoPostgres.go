@@ -106,7 +106,9 @@ func (r *BranchesRepoPostgres) GetEmployeesByBranchID(
 	if err != nil {
 		return nil, fmt.Errorf("query employees by branch id: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	employees := make([]domain.Employee, 0)
 
@@ -154,7 +156,9 @@ func (r *BranchesRepoPostgres) GetServicesByBusinessID(
 	if err != nil {
 		return nil, fmt.Errorf("query services by business id: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	services := make([]domain.Service, 0)
 
@@ -202,7 +206,9 @@ func (r *BranchesRepoPostgres) GetBranchesWithService(
 	if err != nil {
 		return nil, fmt.Errorf("query branches with service: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	branches := make([]domain.Branch, 0)
 
@@ -250,7 +256,9 @@ func (r *BranchesRepoPostgres) GetEmployeesByServiceAndBranch(
 	if err != nil {
 		return nil, fmt.Errorf("query employees by service and branch: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	employees := make([]domain.Employee, 0)
 

@@ -49,15 +49,6 @@ func TestBranchesApp_Run_Shutdown(t *testing.T) {
 	// This test ensures that the Run method handles context cancellation properly
 	// But we can't fully test it without a real database
 
-	// Arrange
-	ctx := context.Background()
-	log := logger.New(logger.Config{
-		Level:  slog.LevelInfo,
-		JSON:   false,
-		Source: true,
-	})
-	ctx = logger.With(ctx, log)
-
 	// We'll skip the full initialization since it requires a database
 	// This is more of a demonstration of how to structure the test
 	t.Skip("Requires database connection - integration test")

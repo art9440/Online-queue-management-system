@@ -12,5 +12,5 @@ type BookingRepository interface {
 	GetAvailableSlots(ctx context.Context, input domain.AvailableSlotsInput) ([]domain.AvailableSlot, error)
 	CheckClientExists(ctx context.Context, client domain.ClientInput) (int64, bool, error)
 	CreateClient(ctx context.Context, client domain.ClientInput) (int64, error)
-	CreateAppointment(ctx context.Context, clientID int64, input domain.CreateAppointmentInput) (domain.CreateAppointmentOutput, error)
+	CreateAppointment(ctx context.Context, clientID int64, input *domain.CreateAppointmentInput) (domain.CreateAppointmentOutput, error)
 }
