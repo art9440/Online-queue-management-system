@@ -1,7 +1,7 @@
 package app
 
 import (
-	"Online-queue-management-system/libs/config"
+	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/logger"
 	branchesConfig "Online-queue-management-system/services/branches/config"
 	"context"
@@ -28,7 +28,7 @@ func TestNewApp_Success(t *testing.T) {
 
 	// Using a test database connection string
 	// Note: This will fail because the database doesn't exist, but we can test error handling
-	dbCfg := &config.DBConfig{
+	dbCfg := &libconfig.DBConfig{
 		DSN: "invalid-dsn",
 	}
 
@@ -73,7 +73,7 @@ func TestNewApp_ConfigValidation(t *testing.T) {
 		},
 	}
 
-	dbCfg := &config.DBConfig{
+	dbCfg := &libconfig.DBConfig{
 		DSN: "invalid-dsn",
 	}
 
@@ -107,7 +107,7 @@ func TestNewApp_EmptyJWTSecret(t *testing.T) {
 		},
 	}
 
-	dbCfg := &config.DBConfig{
+	dbCfg := &libconfig.DBConfig{
 		DSN: "invalid-dsn",
 	}
 

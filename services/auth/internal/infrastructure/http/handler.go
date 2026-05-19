@@ -24,6 +24,8 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+const methodNotAllowedMessage = "method not allowed"
+
 func NewHandler(
 	authService *service.AuthService,
 	parser *auth.TokenParser,
@@ -49,7 +51,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, MessageResponse{Message: "method not allowed"})
+		writeJSON(w, http.StatusMethodNotAllowed, MessageResponse{Message: methodNotAllowedMessage})
 		return
 	}
 
@@ -82,7 +84,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, MessageResponse{Message: "method not allowed"})
+		writeJSON(w, http.StatusMethodNotAllowed, MessageResponse{Message: methodNotAllowedMessage})
 		return
 	}
 
@@ -110,7 +112,7 @@ func (h *Handler) handleRefresh(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, MessageResponse{Message: "method not allowed"})
+		writeJSON(w, http.StatusMethodNotAllowed, MessageResponse{Message: methodNotAllowedMessage})
 		return
 	}
 
@@ -126,7 +128,7 @@ func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleMe(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, MessageResponse{Message: "method not allowed"})
+		writeJSON(w, http.StatusMethodNotAllowed, MessageResponse{Message: methodNotAllowedMessage})
 		return
 	}
 
