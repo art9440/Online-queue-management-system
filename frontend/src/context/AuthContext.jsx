@@ -1,27 +1,4 @@
-<<<<<<< HEAD
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext } from "react";
-
-const AuthContext = createContext({
-    user: null,
-    loading: false,
-    login: () => {},
-    logout: () => {},
-    getRedirectPath: () => "/register",
-});
-
-export const AuthProvider = ({ children }) => {
-    return (
-        <AuthContext.Provider
-            value={{
-                user: null,
-                loading: false,
-                login: () => {},
-                logout: () => {},
-                getRedirectPath: () => "/register",
-            }}
-        >
-=======
 import { createContext, useContext, useEffect, useState } from "react";
 import { authApi } from "../api/auth";
 import { getRoleName } from "../constants/roles";
@@ -107,18 +84,13 @@ export const AuthProvider = ({ children }) => {
 
     return (
         <AuthContext.Provider value={value}>
->>>>>>> 2299878 (add AuthContext)
             {children}
         </AuthContext.Provider>
     );
 };
 
-<<<<<<< HEAD
-export const useAuth = () => useContext(AuthContext);
-=======
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (!context) throw new Error('useAuth должен использоваться внутри AuthProvider');
     return context;
 };
->>>>>>> 2299878 (add AuthContext)
