@@ -5,8 +5,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"time"
 	"fmt"
+	"time"
 
 	_ "github.com/lib/pq"
 )
@@ -178,6 +178,57 @@ func (r *BranchesRepoPostgres) GetAppointmentsByBranchIDAndDate(
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			_ = err
+		}
+	}()
+
+	appointments := make([]domain.Appointment, 0)
+
+	for rows.Next() {
+		var (
+			appointment domain.Appointment
+			client      domain.Client
+			employee    domain.Employee
+			service     domain.Service
+		)
+
+		if err := rows.Scan(
+			&appointment.ID,
+			&appointment.BranchID,
+			&client.ID,
+			&client.Email,
+			&client.Phone,
+			&client.Name,
+			&client.Surname,
+			&client.TgUsername,
+			&client.CreatedAt,
+			&employee.ID,
+			&employee.Name,
+			&employee.Surname,
+			&service.ID,
+			&service.Name,
+			&appointment.StartTime,
+			&appointment.EndTime,
+			&appointment.Status,
+			&appointment.Comment,
+			&appointment.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan appointment: %w", err)
+		}
+
+		appointment.Client = client
+
+		appointments = append(appointments, appointment)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate appointments: %w", err)
+	}
+
+	return appointments, nil
+}
 
 func (r *BranchesRepoPostgres) GetEmployeesByBranchID(
 	ctx context.Context,
@@ -203,50 +254,27 @@ func (r *BranchesRepoPostgres) GetEmployeesByBranchID(
 		_ = rows.Close()
 	}()
 
-	var appointments []domain.Appointment
+	employees := make([]domain.Employee, 0)
 	for rows.Next() {
-		var appointment domain.Appointment
-		var email sql.NullString
-		var phone sql.NullString
-		var tgUsername sql.NullString
-		var comment sql.NullString
+		var employee domain.Employee
 
-		err := rows.Scan(
-			&appointment.ID,
-			&appointment.BranchID,
-			&appointment.Client.ID,
-			&email,
-			&phone,
-			&appointment.Client.Name,
-			&appointment.Client.Surname,
-			&tgUsername,
-			&appointment.Client.CreatedAt,
-			&appointment.EmployeeID,
-			&appointment.EmployeeName,
-			&appointment.EmployeeSurname,
-			&appointment.ServiceID,
-			&appointment.ServiceName,
-			&appointment.StartTime,
-			&appointment.EndTime,
-			&appointment.Status,
-			&comment,
-			&appointment.CreatedAt,
-		)
-		if err != nil {
-			return nil, err
+		if err := rows.Scan(
+			&employee.ID,
+			&employee.BranchID,
+			&employee.Name,
+			&employee.Surname,
+			&employee.Position,
+		); err != nil {
+			return nil, fmt.Errorf("scan employee: %w", err)
 		}
 
-		appointment.Client.Email = nullableString(email)
-		appointment.Client.Phone = nullableString(phone)
-		appointment.Client.TgUsername = nullableString(tgUsername)
-		appointment.Comment = nullableString(comment)
-		appointments = append(appointments, appointment)
+		employees = append(employees, employee)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("iterate employees: %w", err)
 	}
 
-	return appointments, nil
+	return employees, nil
 }
 
 type clientScanner interface {
@@ -284,29 +312,6 @@ func nullableString(value sql.NullString) *string {
 		return nil
 	}
 	return &value.String
-	employees := make([]domain.Employee, 0)
-
-	for rows.Next() {
-		var employee domain.Employee
-
-		if err := rows.Scan(
-			&employee.ID,
-			&employee.BranchID,
-			&employee.Name,
-			&employee.Surname,
-			&employee.Position,
-		); err != nil {
-			return nil, fmt.Errorf("scan employee: %w", err)
-		}
-
-		employees = append(employees, employee)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate employees rows: %w", err)
-	}
-
-	return employees, nil
 }
 
 func (r *BranchesRepoPostgres) GetServicesByBusinessID(
