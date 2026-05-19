@@ -14,8 +14,7 @@ FROM debian:bookworm-slim@sha256:67b30a61dc87758f0caf819646104f29ecbda97d920aaf5
 
 WORKDIR /app
 
-COPY --from=builder --chown=65532:65532 /app/booking /app/booking
-RUN chmod a-w /app/booking
+COPY --from=builder --chown=root:root --chmod=555 /app/booking /app/booking
 
 USER 65532:65532
 
