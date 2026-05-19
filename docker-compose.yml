@@ -133,3 +133,9 @@ services:
 
 volumes:
   postgres_data:
+
+
+networks:
+  default:
+    name: online_queue_network
+    external: true
