@@ -1,0 +1,147 @@
+# =========================
+
+# Go build
+
+# =========================
+
+bin/
+build/
+dist/
+.gocache/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.cover
+coverage.out
+.gomodcache/
+
+# =========================
+
+# Logs
+
+# =========================
+
+*.log
+logs/
+*.pid
+
+# =========================
+
+# Env files (ВАЖНО)
+
+# =========================
+
+.env
+.env.*
+!.env.example
+
+# =========================
+
+# IDE / Editor
+
+# =========================
+
+# VS Code
+
+.vscode/
+
+#Sublime text
+
+*.sublime-project
+*.sublime-workspace
+
+# GoLand / IntelliJ
+
+.idea/
+
+
+# =========================
+
+# Docker
+
+# =========================
+
+docker-compose.override.yml
+*.local.yml
+
+# =========================
+
+# Test / temp
+
+# =========================
+
+tmp/
+temp/
+.cache/
+
+# =========================
+
+# OS files
+
+# =========================
+
+Thumbs.db
+
+# =========================
+
+# Binary artifacts
+
+# =========================
+
+*.tar
+*.gz
+*.zip
+
+# =========================
+
+# Debug
+
+# =========================
+
+__debug_bin
+*.prof
+
+# =========================
+
+# Database (если локально)
+
+# =========================
+
+*.db
+*.sqlite
+*.sqlite3
+
+# =========================
+
+# Generated files
+
+# =========================
+
+*.gen.go
+mock_*.go
+
+# =========================
+
+# Swagger / docs (если генеришь)
+
+# =========================
+
+docs/
+swagger/
+
+# =========================
+
+# Node (если фронт рядом)
+
+# =========================
+
+node_modules/
+npm-debug.log
+yarn-error.log
+frontend/.vite/
+frontend/node_modules/
+frontend/dist/

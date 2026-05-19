@@ -1,0 +1,110 @@
+package repos
+
+import (
+	"Online-queue-management-system/services/registration/internal/domain"
+	"Online-queue-management-system/services/registration/internal/domain/pending"
+	"context"
+	"database/sql"
+	"fmt"
+
+	_ "github.com/lib/pq"
+)
+
+type RegistrationRepoPostgres struct {
+	db *sql.DB
+}
+
+func NewRegistrationRepoPostgres(dsn string) (*RegistrationRepoPostgres, error) {
+
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := db.Ping(); err != nil {
+		return nil, err
+	}
+
+	return &RegistrationRepoPostgres{db: db}, nil
+}
+
+func (r *RegistrationRepoPostgres) CreateUserWithBusiness(ctx context.Context, p *pending.PendingRegistration) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	// 1. создать бизнес
+	var businessID int64
+	err = tx.QueryRowContext(ctx, `
+		INSERT INTO businesses (name, type, registration_slug)
+		VALUES ($1, $2, $3)
+		RETURNING id
+	`, p.BusinessName, p.BusinessType, p.ClientSlug).Scan(&businessID)
+	if err != nil {
+		return fmt.Errorf("insert business: %w", err)
+	}
+
+	// 2. получить role_id для "business_admin"
+	var roleID int64
+	err = tx.QueryRowContext(ctx, `
+		SELECT id FROM roles WHERE name = $1
+	`, "business_admin").Scan(&roleID)
+	if err != nil {
+		return fmt.Errorf("get role: %w", err)
+	}
+
+	// 3. создать пользователя
+	result, err := tx.ExecContext(ctx, `
+    INSERT INTO users (login, password_hash, role_id, business_id)
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT (login) DO NOTHING
+`, p.Email, p.PasswordHash, roleID, businessID)
+
+	if err != nil {
+		return fmt.Errorf("insert user: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
+
+	if rows == 0 {
+		return domain.ErrUserAlreadyExists
+	}
+
+	return tx.Commit()
+}
+
+func (r *RegistrationRepoPostgres) GetUserByEmail(ctx context.Context, email string) (bool, error) {
+	var exists bool
+	err := r.db.QueryRowContext(ctx, `
+		SELECT EXISTS(SELECT 1 FROM users WHERE login = $1)
+	`, email).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("check user: %w", err)
+	}
+	return exists, nil
+}
+
+func (r *RegistrationRepoPostgres) UpdatePasswordByEmail(ctx context.Context, email, passwordHash string) (bool, error) {
+	result, err := r.db.ExecContext(ctx, `
+		UPDATE users
+		SET password_hash = $1
+		WHERE login = $2
+	`, passwordHash, email)
+	if err != nil {
+		return false, fmt.Errorf("update password: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("rows affected: %w", err)
+	}
+
+	return rowsAffected > 0, nil
+}
