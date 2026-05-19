@@ -97,6 +97,15 @@ type ServiceResponse struct {
 	Name string `json:"name"`
 }
 
+type GoogleCalendarAuthResponse struct {
+	URL string `json:"url"`
+}
+
+type GoogleCalendarExportResponse struct {
+	EventID  string `json:"event_id"`
+	HTMLLink string `json:"html_link"`
+}
+
 func CreateAppointmentResponseFromDomain(
 	output *domain.CreateAppointmentOutput,
 ) CreateAppointmentResponse {
@@ -124,5 +133,12 @@ func CreateAppointmentResponseFromDomain(
 		EndTime:   output.EndTime.Format(time.RFC3339),
 		Status:    string(output.Status),
 		Comment:   output.Comment,
+	}
+}
+
+func GoogleCalendarExportFromDomain(event domain.GoogleCalendarEvent) GoogleCalendarExportResponse {
+	return GoogleCalendarExportResponse{
+		EventID:  event.ID,
+		HTMLLink: event.HTMLLink,
 	}
 }

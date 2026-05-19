@@ -5,25 +5,31 @@ import (
 	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/logger"
 	"Online-queue-management-system/libs/middleware"
+	"Online-queue-management-system/libs/redisclient"
 	"Online-queue-management-system/services/booking/config"
 	"Online-queue-management-system/services/booking/internal/application/service"
+	googlecalendar "Online-queue-management-system/services/booking/internal/infrastructure/google"
 	httpserver "Online-queue-management-system/services/booking/internal/infrastructure/httpServer"
+	redisrepo "Online-queue-management-system/services/booking/internal/infrastructure/redis"
 	"Online-queue-management-system/services/booking/internal/infrastructure/repos"
 	"context"
 	"errors"
 	"net"
 	"net/http"
 	"time"
+
+	goredis "github.com/redis/go-redis/v9"
 )
 
 type BookingApp struct {
 	svc        *service.BookingService
 	httpServer *http.Server
+	redis      *goredis.Client
 }
 
 func NewApp(
 	ctx context.Context,
-	cfg config.BookingConfig,
+	cfg *config.BookingConfig,
 	dbCfg *libconfig.DBConfig,
 ) (*BookingApp, error) {
 	log := logger.From(ctx)
@@ -34,7 +40,20 @@ func NewApp(
 		return nil, err
 	}
 
-	svc := service.New(repoPostgres)
+	redisClient, err := redisclient.New(ctx, libconfig.RedisConfig{
+		RedisAddr:     cfg.RedisAddr,
+		RedisPassword: cfg.RedisPassword,
+		RedisDB:       cfg.RedisDB,
+	}, 5*time.Second)
+	if err != nil {
+		log.Error("failed to connect redis", "err", err)
+		return nil, err
+	}
+
+	tokenRepo := redisrepo.NewCalendarTokenRepository(redisClient)
+	calendarExporter := googlecalendar.NewCalendarExporter(cfg.GoogleClientID, cfg.GoogleSecret, cfg.GoogleRedirect)
+
+	svc := service.New(repoPostgres, tokenRepo, calendarExporter)
 
 	serverImpl := httpserver.NewHttpServer(svc)
 
@@ -74,6 +93,21 @@ func NewApp(
 		authMiddleware(http.HandlerFunc(serverImpl.CancelAppointment)),
 	)
 
+	mux.Handle(
+		"GET /google-calendar/auth-url",
+		authMiddleware(http.HandlerFunc(serverImpl.GoogleCalendarAuthURL)),
+	)
+
+	mux.Handle(
+		"GET /google-calendar/callback",
+		http.HandlerFunc(serverImpl.GoogleCalendarCallback),
+	)
+
+	mux.Handle(
+		"POST /appointments/{id}/google-calendar",
+		authMiddleware(http.HandlerFunc(serverImpl.ExportAppointmentToGoogleCalendar)),
+	)
+
 	// public health endpoint
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -93,6 +127,7 @@ func NewApp(
 	return &BookingApp{
 		httpServer: server,
 		svc:        svc,
+		redis:      redisClient,
 	}, nil
 }
 
@@ -140,4 +175,10 @@ func (a *BookingApp) Run(ctx context.Context) error {
 
 	log.Info("booking service stopped")
 	return nil
+}
+
+func (a *BookingApp) Close() {
+	if a.redis != nil {
+		_ = a.redis.Close()
+	}
 }

@@ -14,3 +14,17 @@ type BookingRepository interface {
 	CreateClient(ctx context.Context, client domain.ClientInput) (int64, error)
 	CreateAppointment(ctx context.Context, clientID int64, input *domain.CreateAppointmentInput) (domain.CreateAppointmentOutput, error)
 }
+
+type CalendarTokenRepository interface {
+	SaveOAuthState(ctx context.Context, state string, userID int64) error
+	GetOAuthState(ctx context.Context, state string) (int64, error)
+	DeleteOAuthState(ctx context.Context, state string) error
+	SaveToken(ctx context.Context, userID int64, token domain.GoogleCalendarToken) error
+	GetToken(ctx context.Context, userID int64) (domain.GoogleCalendarToken, error)
+}
+
+type CalendarExporter interface {
+	AuthCodeURL(state string) (string, error)
+	Exchange(ctx context.Context, code string) (domain.GoogleCalendarToken, error)
+	ExportAppointment(ctx context.Context, token domain.GoogleCalendarToken, appointment *domain.Appointment) (domain.GoogleCalendarEvent, domain.GoogleCalendarToken, error)
+}

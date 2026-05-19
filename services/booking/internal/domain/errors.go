@@ -13,4 +13,6 @@ var (
 	ErrAppointmentNotFound     = errors.New("appointment not found")
 	ErrAppointmentCancelled    = errors.New("appointment is already cancelled")
 	ErrAppointmentCompleted    = errors.New("completed appointment cannot be cancelled")
+	ErrGoogleCalendarDisabled  = errors.New("google calendar integration is disabled")
+	ErrGoogleCalendarNotLinked = errors.New("google calendar is not linked")
 )

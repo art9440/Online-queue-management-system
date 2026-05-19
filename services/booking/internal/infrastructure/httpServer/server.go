@@ -503,6 +503,80 @@ func (s *HttpServer) CancelAppointment(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (s *HttpServer) GoogleCalendarAuthURL(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user := auth.FromContext(ctx)
+	if user == nil {
+		http.Error(w, liberrors.ErrUnauthorized.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	authURL, err := s.svc.GoogleCalendarAuthURL(ctx, user)
+	if err != nil {
+		writeGoogleCalendarError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, dto.GoogleCalendarAuthResponse{URL: authURL})
+}
+
+func (s *HttpServer) GoogleCalendarCallback(w http.ResponseWriter, r *http.Request) {
+	state := r.URL.Query().Get("state")
+	code := r.URL.Query().Get("code")
+
+	if err := s.svc.CompleteGoogleCalendarOAuth(r.Context(), state, code); err != nil {
+		writeGoogleCalendarError(w, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *HttpServer) ExportAppointmentToGoogleCalendar(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user := auth.FromContext(ctx)
+	if user == nil {
+		http.Error(w, liberrors.ErrUnauthorized.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	appointmentID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || appointmentID <= 0 {
+		http.Error(w, domain.ErrInvalidAppointmentID.Error(), http.StatusBadRequest)
+		return
+	}
+
+	event, err := s.svc.ExportAppointmentToGoogleCalendar(ctx, user, appointmentID)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrInvalidAppointmentID):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		case errors.Is(err, domain.ErrAppointmentNotFound):
+			http.Error(w, err.Error(), http.StatusNotFound)
+		case errors.Is(err, liberrors.ErrForbidden):
+			http.Error(w, err.Error(), http.StatusForbidden)
+		default:
+			writeGoogleCalendarError(w, err)
+		}
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, dto.GoogleCalendarExportFromDomain(event))
+}
+
+func writeGoogleCalendarError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, liberrors.ErrUnauthorized):
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+	case errors.Is(err, domain.ErrGoogleCalendarDisabled):
+		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+	case errors.Is(err, domain.ErrGoogleCalendarNotLinked):
+		http.Error(w, err.Error(), http.StatusConflict)
+	default:
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 func writeJSON(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
