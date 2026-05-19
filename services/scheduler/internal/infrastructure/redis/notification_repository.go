@@ -31,6 +31,10 @@ type notificationPayload struct {
 	Employee    string `json:"employee"`
 	StartTime   string `json:"start_time"`
 	Description string `json:"description"`
+	Email       string `json:"email"`
+	Subject     string `json:"subject"`
+	Body        string `json:"body"`
+	HTMLBody    string `json:"html_body"`
 	Status      string `json:"status"`
 	SentAt      string `json:"sent_at,omitempty"`
 	FailedAt    string `json:"failed_at,omitempty"`
@@ -137,6 +141,10 @@ func (r *NotificationRepository) getNotification(ctx context.Context, id string)
 		Employee:    payload.Employee,
 		StartTime:   startTime,
 		Description: payload.Description,
+		Email:       payload.Email,
+		Subject:     payload.Subject,
+		Body:        payload.Body,
+		HTMLBody:    payload.HTMLBody,
 	}, nil
 }
 
