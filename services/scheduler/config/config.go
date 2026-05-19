@@ -9,12 +9,14 @@ import (
 const (
 	defaultPollInterval = 30 * time.Second
 	defaultBatchSize    = 100
+	defaultBotURL       = "http://bot:8085"
 )
 
 type Config struct {
 	RedisCfg     libconfig.RedisConfig
 	PollInterval time.Duration
 	BatchSize    int
+	BotURL       string
 }
 
 func LoadConfig(ctx context.Context) (*Config, error) {
@@ -41,5 +43,6 @@ func LoadConfig(ctx context.Context) (*Config, error) {
 		},
 		PollInterval: libconfig.GetDurationDefault(ctx, "SCHEDULER_POLL_INTERVAL", defaultPollInterval),
 		BatchSize:    libconfig.GetIntDefault(ctx, "SCHEDULER_BATCH_SIZE", defaultBatchSize),
+		BotURL:       libconfig.Get(ctx, "BOT_URL", defaultBotURL),
 	}, nil
 }

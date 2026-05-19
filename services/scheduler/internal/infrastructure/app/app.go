@@ -5,6 +5,7 @@ import (
 	"Online-queue-management-system/libs/redisclient"
 	"Online-queue-management-system/services/scheduler/config"
 	"Online-queue-management-system/services/scheduler/internal/application/service"
+	"Online-queue-management-system/services/scheduler/internal/infrastructure/bot"
 	redisrepo "Online-queue-management-system/services/scheduler/internal/infrastructure/redis"
 	"context"
 	"fmt"
@@ -34,7 +35,8 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	}
 
 	repo := redisrepo.NewNotificationRepository(rdb)
-	scheduler := service.New(repo, cfg.PollInterval, cfg.BatchSize)
+	dispatcher := bot.NewDispatcher(cfg.BotURL)
+	scheduler := service.New(repo, dispatcher, cfg.PollInterval, cfg.BatchSize)
 
 	return &App{
 		scheduler: scheduler,
