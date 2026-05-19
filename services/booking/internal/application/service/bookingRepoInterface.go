@@ -28,3 +28,11 @@ type CalendarExporter interface {
 	Exchange(ctx context.Context, code string) (domain.GoogleCalendarToken, error)
 	ExportAppointment(ctx context.Context, token domain.GoogleCalendarToken, appointment *domain.Appointment) (domain.GoogleCalendarEvent, domain.GoogleCalendarToken, error)
 }
+
+type AppointmentNotificationRepository interface {
+	SaveAppointmentNotifications(
+		ctx context.Context,
+		appointment *domain.CreateAppointmentOutput,
+		client *domain.ClientInput,
+	) error
+}

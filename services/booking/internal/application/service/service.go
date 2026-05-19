@@ -3,6 +3,7 @@ package service
 import (
 	"Online-queue-management-system/libs/auth"
 	liberrors "Online-queue-management-system/libs/errors"
+	"Online-queue-management-system/libs/logger"
 	"Online-queue-management-system/services/booking/internal/domain"
 	"context"
 	"crypto/rand"
@@ -10,16 +11,23 @@ import (
 )
 
 type BookingService struct {
-	repoPostgres BookingRepository
-	tokenRepo    CalendarTokenRepository
-	exporter     CalendarExporter
+	repoPostgres     BookingRepository
+	tokenRepo        CalendarTokenRepository
+	exporter         CalendarExporter
+	notificationRepo AppointmentNotificationRepository
 }
 
-func New(repoPostgres BookingRepository, tokenRepo CalendarTokenRepository, exporter CalendarExporter) *BookingService {
+func New(
+	repoPostgres BookingRepository,
+	tokenRepo CalendarTokenRepository,
+	exporter CalendarExporter,
+	notificationRepo AppointmentNotificationRepository,
+) *BookingService {
 	return &BookingService{
-		repoPostgres: repoPostgres,
-		tokenRepo:    tokenRepo,
-		exporter:     exporter,
+		repoPostgres:     repoPostgres,
+		tokenRepo:        tokenRepo,
+		exporter:         exporter,
+		notificationRepo: notificationRepo,
 	}
 }
 
@@ -170,6 +178,16 @@ func (s *BookingService) CreateAppointment(
 	appointment, err := s.repoPostgres.CreateAppointment(ctx, clientID, input)
 	if err != nil {
 		return domain.CreateAppointmentOutput{}, err
+	}
+
+	if s.notificationRepo != nil {
+		if err := s.notificationRepo.SaveAppointmentNotifications(ctx, &appointment, &input.Client); err != nil {
+			logger.From(ctx).Error(
+				"failed to create appointment notifications",
+				"appointment_id", appointment.AppointmentID,
+				"err", err,
+			)
+		}
 	}
 
 	return appointment, nil

@@ -51,9 +51,10 @@ func NewApp(
 	}
 
 	tokenRepo := redisrepo.NewCalendarTokenRepository(redisClient)
+	notificationRepo := redisrepo.NewAppointmentNotificationRepository(redisClient)
 	calendarExporter := googlecalendar.NewCalendarExporter(cfg.GoogleClientID, cfg.GoogleSecret, cfg.GoogleRedirect)
 
-	svc := service.New(repoPostgres, tokenRepo, calendarExporter)
+	svc := service.New(repoPostgres, tokenRepo, calendarExporter, notificationRepo)
 
 	serverImpl := httpserver.NewHttpServer(svc)
 
