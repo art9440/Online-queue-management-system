@@ -283,3 +283,60 @@ func TestGetBranchClients_WhenManagerRequestsAnotherBranch_ShouldReturnForbidden
 		t.Fatalf("expected status %d, got %d with body %s", http.StatusForbidden, rec.Code, rec.Body.String())
 	}
 }
+
+func TestGetBusinessRegistrationSlug_WhenBusinessAdminOwnsBusiness_ShouldReturnSlug(t *testing.T) {
+	server, repo := newTestHTTPServer()
+	repo.SlugByBusinessID[7] = "beautiful-salon"
+
+	rec := serveAuthenticatedRequest(t, http.HandlerFunc(server.GetBusinessRegistrationSlug), "/businesses/7/registration-slug", sharedauth.AccessClaims{
+		UserID:     42,
+		Login:      "owner@example.com",
+		RoleID:     2,
+		RoleName:   string(sharedauth.RoleBusinessAdmin),
+		BusinessID: 7,
+	})
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+
+	var body branchesdto.BusinessRegistrationSlugResponse
+	decodeJSON(t, rec, &body)
+	if body.BusinessID != 7 || body.RegistrationSlug != "beautiful-salon" {
+		t.Fatalf("unexpected registration slug response: %#v", body)
+	}
+}
+
+func TestGetBusinessRegistrationSlug_WhenManagerRequests_ShouldReturnForbidden(t *testing.T) {
+	server, _ := newTestHTTPServer()
+	branchID := int64(11)
+
+	rec := serveAuthenticatedRequest(t, http.HandlerFunc(server.GetBusinessRegistrationSlug), "/businesses/7/registration-slug", sharedauth.AccessClaims{
+		UserID:     43,
+		Login:      "manager@example.com",
+		RoleID:     3,
+		RoleName:   string(sharedauth.RoleManager),
+		BusinessID: 7,
+		BranchID:   &branchID,
+	})
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusForbidden, rec.Code, rec.Body.String())
+	}
+}
+
+func TestGetBusinessRegistrationSlug_WhenBusinessAdminRequestsAnotherBusiness_ShouldReturnForbidden(t *testing.T) {
+	server, _ := newTestHTTPServer()
+
+	rec := serveAuthenticatedRequest(t, http.HandlerFunc(server.GetBusinessRegistrationSlug), "/businesses/8/registration-slug", sharedauth.AccessClaims{
+		UserID:     42,
+		Login:      "owner@example.com",
+		RoleID:     2,
+		RoleName:   string(sharedauth.RoleBusinessAdmin),
+		BusinessID: 7,
+	})
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d with body %s", http.StatusForbidden, rec.Code, rec.Body.String())
+	}
+}

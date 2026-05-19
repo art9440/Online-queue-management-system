@@ -489,3 +489,30 @@ func (r *BranchesRepoPostgres) GetBusinessIDByRegistrationSlug(
 
 	return businessID, nil
 }
+
+func (r *BranchesRepoPostgres) GetRegistrationSlugByBusinessID(
+	ctx context.Context,
+	businessID int64,
+) (string, error) {
+	const query = `
+		SELECT registration_slug
+		FROM businesses
+		WHERE id = $1
+	`
+
+	var registrationSlug sql.NullString
+
+	err := r.db.QueryRowContext(ctx, query, businessID).Scan(&registrationSlug)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", domain.ErrBusinessNotFound
+		}
+		return "", fmt.Errorf("query registration slug by business id: %w", err)
+	}
+
+	if !registrationSlug.Valid || registrationSlug.String == "" {
+		return "", domain.ErrRegistrationSlugNotSet
+	}
+
+	return registrationSlug.String, nil
+}

@@ -148,6 +148,31 @@ func (s *HttpServer) GetServices(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, response)
 }
 
+func (s *HttpServer) GetBusinessRegistrationSlug(w http.ResponseWriter, r *http.Request) {
+	user := auth.FromContext(r.Context())
+	if user == nil {
+		http.Error(w, unauthorizedMessage, http.StatusUnauthorized)
+		return
+	}
+
+	businessID, err := businessIDFromRequest(r)
+	if err != nil {
+		http.Error(w, domain.ErrInvalidBusinessID.Error(), http.StatusBadRequest)
+		return
+	}
+
+	registrationSlug, err := s.svc.GetRegistrationSlugForBusiness(r.Context(), user, businessID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, dto.BusinessRegistrationSlugResponse{
+		BusinessID:       businessID,
+		RegistrationSlug: registrationSlug,
+	})
+}
+
 func (s *HttpServer) GetBranchesWithService(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.From(ctx)
@@ -533,11 +558,31 @@ func branchIDFromRequest(r *http.Request) (int64, error) {
 	return branchID, nil
 }
 
+func businessIDFromRequest(r *http.Request) (int64, error) {
+	rawID := r.PathValue("id")
+	if rawID == "" {
+		rawID = strings.TrimPrefix(r.URL.Path, "/businesses/")
+		rawID = strings.Split(rawID, "/")[0]
+	}
+
+	businessID, err := strconv.ParseInt(rawID, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	if businessID <= 0 {
+		return 0, errors.New("invalid business id")
+	}
+
+	return businessID, nil
+}
+
 func writeServiceError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, domain.ErrForbidden):
 		http.Error(w, err.Error(), http.StatusForbidden)
-	case errors.Is(err, domain.ErrBranchNotFound):
+	case errors.Is(err, domain.ErrBranchNotFound),
+		errors.Is(err, domain.ErrBusinessNotFound),
+		errors.Is(err, domain.ErrRegistrationSlugNotSet):
 		http.Error(w, err.Error(), http.StatusNotFound)
 	default:
 		http.Error(w, err.Error(), http.StatusInternalServerError)

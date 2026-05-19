@@ -17,4 +17,5 @@ type BranchesRepository interface {
 	GetBranchesWithService(ctx context.Context, businessID int64, serviceID int64) ([]domain.Branch, error)
 	GetEmployeesByServiceAndBranch(ctx context.Context, serviceID int64, branchID int64) ([]domain.Employee, error)
 	GetBusinessIDByRegistrationSlug(ctx context.Context, registrationSlug string) (int64, error)
+	GetRegistrationSlugByBusinessID(ctx context.Context, businessID int64) (string, error)
 }

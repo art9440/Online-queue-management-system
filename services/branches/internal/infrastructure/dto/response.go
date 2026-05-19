@@ -97,6 +97,11 @@ type ServiceResponse struct {
 	Price           float64 `json:"price"`
 }
 
+type BusinessRegistrationSlugResponse struct {
+	BusinessID       int64  `json:"business_id"`
+	RegistrationSlug string `json:"registration_slug"`
+}
+
 func BranchesFromDomain(branches []domain.Branch) []BranchResponse {
 	result := make([]BranchResponse, 0, len(branches))
 

@@ -50,6 +50,8 @@ func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg *libconfig.DBC
 		authMiddleware(http.HandlerFunc(serverImpl.GetBranchesWithService)))
 	mux.Handle("/services/{serviceId}/branches/{branchId}/employees",
 		authMiddleware(http.HandlerFunc(serverImpl.GetEmployeesForService)))
+	mux.Handle("GET /businesses/{id}/registration-slug",
+		authMiddleware(http.HandlerFunc(serverImpl.GetBusinessRegistrationSlug)))
 
 	// Public endpoints - no authentication required
 	mux.Handle("/public/{registrationSlug}/services",

@@ -466,6 +466,32 @@ Errors:
 - `401` unauthorized
 - `500` service/repository error or forbidden role
 
+### `GET /businesses/{id}/registration-slug`
+
+Returns `registration_slug` for a business.
+
+Access:
+
+- `business_admin` only
+- `{id}` must equal the authenticated user's `business_id`
+
+Response `200 OK`:
+
+```json
+{
+  "business_id": 7,
+  "registration_slug": "beautiful-salon"
+}
+```
+
+Errors:
+
+- `400` invalid business id
+- `401` unauthorized
+- `403` forbidden
+- `404` business not found or registration slug is not set
+- `500` repository/internal error
+
 ### `GET /services/{serviceId}/branches`
 
 Returns branches where a service is available.

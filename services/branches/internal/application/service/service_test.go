@@ -667,3 +667,59 @@ func TestGetBranchAppointments_WhenManagerRequestsAnotherBranch_ShouldReturnForb
 		t.Fatalf("expected appointments repository not to be called, got %d", repo.AppointmentsByBranchCalls)
 	}
 }
+
+func TestGetRegistrationSlugForBusiness_WhenBusinessAdminOwnsBusiness_ShouldReturnSlug(t *testing.T) {
+	ctx := context.Background()
+	repo := mocks.NewBranchesRepository()
+	svc := New(repo)
+	repo.SlugByBusinessID[7] = "beautiful-salon"
+
+	registrationSlug, err := svc.GetRegistrationSlugForBusiness(ctx, &auth.AccessClaims{
+		RoleName:   string(auth.RoleBusinessAdmin),
+		BusinessID: 7,
+	}, 7)
+	if err != nil {
+		t.Fatalf("get registration slug: %v", err)
+	}
+
+	if registrationSlug != "beautiful-salon" {
+		t.Fatalf("expected registration slug beautiful-salon, got %q", registrationSlug)
+	}
+	if repo.BusinessIDCalls != 1 || repo.LastBusinessID != 7 {
+		t.Fatalf("unexpected repo call state: calls=%d business_id=%d", repo.BusinessIDCalls, repo.LastBusinessID)
+	}
+}
+
+func TestGetRegistrationSlugForBusiness_WhenUserIsNotBusinessAdmin_ShouldReturnForbidden(t *testing.T) {
+	ctx := context.Background()
+	repo := mocks.NewBranchesRepository()
+	svc := New(repo)
+
+	_, err := svc.GetRegistrationSlugForBusiness(ctx, &auth.AccessClaims{
+		RoleName:   string(auth.RoleManager),
+		BusinessID: 7,
+	}, 7)
+	if !errors.Is(err, domain.ErrForbidden) {
+		t.Fatalf("expected forbidden, got %v", err)
+	}
+	if repo.BusinessIDCalls != 0 {
+		t.Fatalf("expected repository not to be called, got %d", repo.BusinessIDCalls)
+	}
+}
+
+func TestGetRegistrationSlugForBusiness_WhenBusinessAdminRequestsAnotherBusiness_ShouldReturnForbidden(t *testing.T) {
+	ctx := context.Background()
+	repo := mocks.NewBranchesRepository()
+	svc := New(repo)
+
+	_, err := svc.GetRegistrationSlugForBusiness(ctx, &auth.AccessClaims{
+		RoleName:   string(auth.RoleBusinessAdmin),
+		BusinessID: 7,
+	}, 8)
+	if !errors.Is(err, domain.ErrForbidden) {
+		t.Fatalf("expected forbidden, got %v", err)
+	}
+	if repo.BusinessIDCalls != 0 {
+		t.Fatalf("expected repository not to be called, got %d", repo.BusinessIDCalls)
+	}
+}
