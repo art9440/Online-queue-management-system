@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	_ "github.com/lib/pq"
 )
@@ -86,6 +87,149 @@ func (r *BranchesRepoPostgres) GetByID(ctx context.Context, branchID int64) ([]d
 	return []domain.Branch{b}, nil
 }
 
+func (r *BranchesRepoPostgres) BranchBelongsToBusiness(ctx context.Context, branchID, businessID int64) (bool, error) {
+	row := r.db.QueryRowContext(ctx,
+		`SELECT EXISTS(
+			SELECT 1
+			FROM branches
+			WHERE id = $1 AND business_id = $2
+		)`,
+		branchID,
+		businessID,
+	)
+
+	var exists bool
+	if err := row.Scan(&exists); err != nil {
+		return false, err
+	}
+
+	return exists, nil
+}
+
+func (r *BranchesRepoPostgres) GetClientsByBranchID(ctx context.Context, branchID int64) ([]domain.Client, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT DISTINCT c.id, c.email, c.phone, c.name, c.surname, c.tg_username, c.created_at
+		 FROM clients c
+		 JOIN appointments a ON a.client_id = c.id
+		 WHERE a.branch_id = $1
+		 ORDER BY c.surname, c.name, c.id`,
+		branchID,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	var clients []domain.Client
+	for rows.Next() {
+		client, err := scanClient(rows)
+		if err != nil {
+			return nil, err
+		}
+		clients = append(clients, client)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return clients, nil
+}
+
+func (r *BranchesRepoPostgres) GetAppointmentsByBranchIDAndDate(
+	ctx context.Context,
+	branchID int64,
+	date time.Time,
+) ([]domain.Appointment, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT
+			a.id,
+			a.branch_id,
+			c.id,
+			c.email,
+			c.phone,
+			c.name,
+			c.surname,
+			c.tg_username,
+			c.created_at,
+			e.id,
+			e.name,
+			e.surname,
+			s.id,
+			s.name,
+			a.start_time,
+			a.end_time,
+			a.status,
+			a.comment,
+			a.created_at
+		 FROM appointments a
+		 JOIN clients c ON c.id = a.client_id
+		 JOIN employees e ON e.id = a.employee_id
+		 JOIN services s ON s.id = a.service_id
+		 WHERE a.branch_id = $1
+		   AND a.start_time >= $2::date
+		   AND a.start_time < $2::date + INTERVAL '1 day'
+		 ORDER BY a.start_time, a.id`,
+		branchID,
+		date.Format(time.DateOnly),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			_ = err
+		}
+	}()
+
+	appointments := make([]domain.Appointment, 0)
+
+	for rows.Next() {
+		var (
+			appointment domain.Appointment
+			client      domain.Client
+			employee    domain.Employee
+			service     domain.Service
+		)
+
+		if err := rows.Scan(
+			&appointment.ID,
+			&appointment.BranchID,
+			&client.ID,
+			&client.Email,
+			&client.Phone,
+			&client.Name,
+			&client.Surname,
+			&client.TgUsername,
+			&client.CreatedAt,
+			&employee.ID,
+			&employee.Name,
+			&employee.Surname,
+			&service.ID,
+			&service.Name,
+			&appointment.StartTime,
+			&appointment.EndTime,
+			&appointment.Status,
+			&appointment.Comment,
+			&appointment.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan appointment: %w", err)
+		}
+
+		appointment.Client = client
+
+		appointments = append(appointments, appointment)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate appointments: %w", err)
+	}
+
+	return appointments, nil
+}
+
 func (r *BranchesRepoPostgres) GetEmployeesByBranchID(
 	ctx context.Context,
 	branchID int64,
@@ -111,7 +255,6 @@ func (r *BranchesRepoPostgres) GetEmployeesByBranchID(
 	}()
 
 	employees := make([]domain.Employee, 0)
-
 	for rows.Next() {
 		var employee domain.Employee
 
@@ -127,12 +270,48 @@ func (r *BranchesRepoPostgres) GetEmployeesByBranchID(
 
 		employees = append(employees, employee)
 	}
-
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate employees rows: %w", err)
+		return nil, fmt.Errorf("iterate employees: %w", err)
 	}
 
 	return employees, nil
+}
+
+type clientScanner interface {
+	Scan(dest ...any) error
+}
+
+func scanClient(scanner clientScanner) (domain.Client, error) {
+	var client domain.Client
+	var email sql.NullString
+	var phone sql.NullString
+	var tgUsername sql.NullString
+
+	err := scanner.Scan(
+		&client.ID,
+		&email,
+		&phone,
+		&client.Name,
+		&client.Surname,
+		&tgUsername,
+		&client.CreatedAt,
+	)
+	if err != nil {
+		return domain.Client{}, err
+	}
+
+	client.Email = nullableString(email)
+	client.Phone = nullableString(phone)
+	client.TgUsername = nullableString(tgUsername)
+
+	return client, nil
+}
+
+func nullableString(value sql.NullString) *string {
+	if !value.Valid {
+		return nil
+	}
+	return &value.String
 }
 
 func (r *BranchesRepoPostgres) GetServicesByBusinessID(

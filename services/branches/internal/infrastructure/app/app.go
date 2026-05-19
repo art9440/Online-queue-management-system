@@ -38,6 +38,9 @@ func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg *libconfig.DBC
 
 	authMiddleware := auth.Middleware(parser)
 
+	mux.Handle("GET /branches", authMiddleware(http.HandlerFunc(serverImpl.GetBranches)))
+	mux.Handle("GET /branches/{id}/clients", authMiddleware(http.HandlerFunc(serverImpl.GetBranchClients)))
+	mux.Handle("GET /branches/{id}/bookings", authMiddleware(http.HandlerFunc(serverImpl.GetBranchAppointments)))
 	mux.Handle("/branches", authMiddleware(http.HandlerFunc(serverImpl.GetBranches)))
 	mux.Handle("/branches/{id}/employees",
 		authMiddleware(http.HandlerFunc(serverImpl.GetBranchEmployees)))
