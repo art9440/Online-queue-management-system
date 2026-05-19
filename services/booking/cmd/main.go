@@ -48,11 +48,12 @@ func run(ctx context.Context) error {
 		return err
 	}
 
-	bookingApp, err := app.NewApp(ctx, *cfg, dbCfg)
+	bookingApp, err := app.NewApp(ctx, cfg, dbCfg)
 	if err != nil {
 		log.Error("error creating booking app", "err", err)
 		return err
 	}
+	defer bookingApp.Close()
 
 	if err := bookingApp.Run(ctx); err != nil {
 		log.Error("error starting booking service", "err", err)

@@ -77,3 +77,15 @@ type AvailableSlot struct {
 	EndTime   time.Time
 	Timezone  string
 }
+
+type GoogleCalendarToken struct {
+	AccessToken  string
+	RefreshToken string
+	TokenType    string
+	Expiry       time.Time
+}
+
+type GoogleCalendarEvent struct {
+	ID       string
+	HTMLLink string
+}

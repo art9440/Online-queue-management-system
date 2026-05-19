@@ -5,14 +5,22 @@ import (
 	liberrors "Online-queue-management-system/libs/errors"
 	"Online-queue-management-system/services/booking/internal/domain"
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 )
 
 type BookingService struct {
 	repoPostgres BookingRepository
+	tokenRepo    CalendarTokenRepository
+	exporter     CalendarExporter
 }
 
-func New(repoPostgres BookingRepository) *BookingService {
-	return &BookingService{repoPostgres: repoPostgres}
+func New(repoPostgres BookingRepository, tokenRepo CalendarTokenRepository, exporter CalendarExporter) *BookingService {
+	return &BookingService{
+		repoPostgres: repoPostgres,
+		tokenRepo:    tokenRepo,
+		exporter:     exporter,
+	}
 }
 
 func (s *BookingService) GetAppointmentsByEmployeeID(
@@ -192,4 +200,90 @@ func (s *BookingService) GetAvailableSlots(
 	}
 
 	return s.repoPostgres.GetAvailableSlots(ctx, input)
+}
+
+func (s *BookingService) GoogleCalendarAuthURL(ctx context.Context, user *auth.AccessClaims) (string, error) {
+	if user == nil {
+		return "", liberrors.ErrUnauthorized
+	}
+	if s.tokenRepo == nil || s.exporter == nil {
+		return "", domain.ErrGoogleCalendarDisabled
+	}
+
+	state, err := generateOAuthState()
+	if err != nil {
+		return "", err
+	}
+	if err := s.tokenRepo.SaveOAuthState(ctx, state, user.UserID); err != nil {
+		return "", err
+	}
+
+	return s.exporter.AuthCodeURL(state)
+}
+
+func (s *BookingService) CompleteGoogleCalendarOAuth(ctx context.Context, state, code string) error {
+	if s.tokenRepo == nil || s.exporter == nil {
+		return domain.ErrGoogleCalendarDisabled
+	}
+	if state == "" || code == "" {
+		return domain.ErrGoogleCalendarNotLinked
+	}
+
+	userID, err := s.tokenRepo.GetOAuthState(ctx, state)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = s.tokenRepo.DeleteOAuthState(ctx, state)
+	}()
+
+	token, err := s.exporter.Exchange(ctx, code)
+	if err != nil {
+		return err
+	}
+
+	return s.tokenRepo.SaveToken(ctx, userID, token)
+}
+
+func (s *BookingService) ExportAppointmentToGoogleCalendar(
+	ctx context.Context,
+	user *auth.AccessClaims,
+	appointmentID int64,
+) (domain.GoogleCalendarEvent, error) {
+	if user == nil {
+		return domain.GoogleCalendarEvent{}, liberrors.ErrUnauthorized
+	}
+	if s.tokenRepo == nil || s.exporter == nil {
+		return domain.GoogleCalendarEvent{}, domain.ErrGoogleCalendarDisabled
+	}
+
+	appointment, err := s.GetAppointmentByID(ctx, user, appointmentID)
+	if err != nil {
+		return domain.GoogleCalendarEvent{}, err
+	}
+
+	token, err := s.tokenRepo.GetToken(ctx, user.UserID)
+	if err != nil {
+		return domain.GoogleCalendarEvent{}, err
+	}
+
+	event, refreshedToken, err := s.exporter.ExportAppointment(ctx, token, &appointment)
+	if err != nil {
+		return domain.GoogleCalendarEvent{}, err
+	}
+	if refreshedToken.RefreshToken != "" || refreshedToken.AccessToken != token.AccessToken {
+		if err := s.tokenRepo.SaveToken(ctx, user.UserID, refreshedToken); err != nil {
+			return domain.GoogleCalendarEvent{}, err
+		}
+	}
+
+	return event, nil
+}
+
+func generateOAuthState() (string, error) {
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(raw), nil
 }
