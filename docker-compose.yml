@@ -111,6 +111,8 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      bot:
+        condition: service_started
     env_file:
       - .env
 
