@@ -251,7 +251,10 @@ func (r *BranchesRepoPostgres) GetEmployeesByBranchID(
 		return nil, fmt.Errorf("query employees by branch id: %w", err)
 	}
 	defer func() {
-		_ = rows.Close()
+		if err := rows.Close(); err != nil {
+			// Silently ignore close errors in defer as there's nothing we can do
+			_ = err
+		}
 	}()
 
 	employees := make([]domain.Employee, 0)
