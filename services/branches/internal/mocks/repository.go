@@ -17,6 +17,7 @@ type MockBranchesRepository struct {
 	GetBranchesWithServiceFunc           func(ctx context.Context, businessID, serviceID int64) ([]domain.Branch, error)
 	GetEmployeesByServiceAndBranchFunc   func(ctx context.Context, serviceID, branchID int64) ([]domain.Employee, error)
 	GetBusinessIDByRegistrationSlugFunc  func(ctx context.Context, registrationSlug string) (int64, error)
+	GetRegistrationSlugByBusinessIDFunc  func(ctx context.Context, businessID int64) (string, error)
 }
 
 func (m *MockBranchesRepository) GetByBusinessID(ctx context.Context, businessID int64) ([]domain.Branch, error) {
@@ -95,4 +96,11 @@ func (m *MockBranchesRepository) GetBusinessIDByRegistrationSlug(ctx context.Con
 		return m.GetBusinessIDByRegistrationSlugFunc(ctx, registrationSlug)
 	}
 	return 0, nil
+}
+
+func (m *MockBranchesRepository) GetRegistrationSlugByBusinessID(ctx context.Context, businessID int64) (string, error) {
+	if m.GetRegistrationSlugByBusinessIDFunc != nil {
+		return m.GetRegistrationSlugByBusinessIDFunc(ctx, businessID)
+	}
+	return "", nil
 }

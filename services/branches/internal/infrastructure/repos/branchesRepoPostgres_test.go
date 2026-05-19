@@ -404,3 +404,79 @@ func TestGetEmployeesByBranchID_ScanError(t *testing.T) {
 		t.Fatalf("unfulfilled expectations: %v", err)
 	}
 }
+
+func TestGetRegistrationSlugByBusinessID_Success(t *testing.T) {
+	// Arrange
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create mock db: %v", err)
+	}
+	defer func() {
+		mock.ExpectClose()
+		if err := db.Close(); err != nil {
+			t.Errorf("failed to close db: %v", err)
+		}
+	}()
+
+	rows := sqlmock.NewRows([]string{"registration_slug"}).
+		AddRow("beautiful-salon")
+
+	mock.ExpectQuery("SELECT registration_slug.*FROM businesses.*WHERE id = \\$1").
+		WithArgs(int64(7)).
+		WillReturnRows(rows)
+
+	repo := &BranchesRepoPostgres{db: db}
+
+	// Act
+	registrationSlug, err := repo.GetRegistrationSlugByBusinessID(context.Background(), 7)
+
+	// Assert
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if registrationSlug != "beautiful-salon" {
+		t.Fatalf("expected beautiful-salon, got %q", registrationSlug)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unfulfilled expectations: %v", err)
+	}
+}
+
+func TestGetRegistrationSlugByBusinessID_WhenSlugIsNull_ShouldReturnSlugNotSet(t *testing.T) {
+	// Arrange
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create mock db: %v", err)
+	}
+	defer func() {
+		mock.ExpectClose()
+		if err := db.Close(); err != nil {
+			t.Errorf("failed to close db: %v", err)
+		}
+	}()
+
+	rows := sqlmock.NewRows([]string{"registration_slug"}).
+		AddRow(nil)
+
+	mock.ExpectQuery("SELECT registration_slug.*FROM businesses.*WHERE id = \\$1").
+		WithArgs(int64(7)).
+		WillReturnRows(rows)
+
+	repo := &BranchesRepoPostgres{db: db}
+
+	// Act
+	registrationSlug, err := repo.GetRegistrationSlugByBusinessID(context.Background(), 7)
+
+	// Assert
+	if !errors.Is(err, domain.ErrRegistrationSlugNotSet) {
+		t.Fatalf("expected ErrRegistrationSlugNotSet, got %v", err)
+	}
+	if registrationSlug != "" {
+		t.Fatalf("expected empty registration slug, got %q", registrationSlug)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unfulfilled expectations: %v", err)
+	}
+}

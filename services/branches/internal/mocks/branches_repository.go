@@ -30,6 +30,7 @@ type BranchesRepository struct {
 	BranchesByService    map[int64][]domain.Branch
 	EmployeesByService   map[int64][]domain.Employee
 	BusinessBySlug       map[string]int64
+	SlugByBusinessID     map[int64]string
 }
 
 func NewBranchesRepository() *BranchesRepository {
@@ -44,6 +45,7 @@ func NewBranchesRepository() *BranchesRepository {
 		BranchesByService:        make(map[int64][]domain.Branch),
 		EmployeesByService:       make(map[int64][]domain.Employee),
 		BusinessBySlug:           make(map[string]int64),
+		SlugByBusinessID:         make(map[int64]string),
 		EmployeesCalls:           0,
 		LastEmployeesBranchID:    0,
 	}
@@ -191,4 +193,22 @@ func (r *BranchesRepository) GetBusinessIDByRegistrationSlug(
 	}
 
 	return 0, domain.ErrBranchNotFound
+}
+
+func (r *BranchesRepository) GetRegistrationSlugByBusinessID(
+	_ context.Context,
+	businessID int64,
+) (string, error) {
+	r.BusinessIDCalls++
+	r.LastBusinessID = businessID
+
+	if r.Err != nil {
+		return "", r.Err
+	}
+
+	if registrationSlug, ok := r.SlugByBusinessID[businessID]; ok {
+		return registrationSlug, nil
+	}
+
+	return "", domain.ErrRegistrationSlugNotSet
 }

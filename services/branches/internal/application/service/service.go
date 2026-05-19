@@ -151,6 +151,30 @@ func (s *BranchesService) GetServicesForBusiness(
 	}
 }
 
+func (s *BranchesService) GetRegistrationSlugForBusiness(
+	ctx context.Context,
+	user *auth.AccessClaims,
+	businessID int64,
+) (string, error) {
+	if user == nil {
+		return "", domain.ErrUnauthorized
+	}
+
+	if businessID <= 0 {
+		return "", domain.ErrInvalidBusinessID
+	}
+
+	if auth.Role(user.RoleName) != auth.RoleBusinessAdmin {
+		return "", domain.ErrForbidden
+	}
+
+	if user.BusinessID != businessID {
+		return "", domain.ErrForbidden
+	}
+
+	return s.repoPostgres.GetRegistrationSlugByBusinessID(ctx, businessID)
+}
+
 func (s *BranchesService) GetBranchesWithServiceForBusiness(
 	ctx context.Context,
 	user *auth.AccessClaims,
