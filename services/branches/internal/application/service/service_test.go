@@ -635,7 +635,7 @@ func TestGetBranchClients_WhenBusinessAdminOwnsBranch_ShouldReturnClients(t *tes
 	repo.ClientsByBranchID[11] = []domain.Client{{ID: 5, Name: "Alex", Surname: "Stone"}}
 
 	clients, err := svc.GetBranchClients(ctx, &auth.AccessClaims{
-		RoleName:   string(domain.RoleBusinessAdmin),
+		RoleName:   string(auth.RoleBusinessAdmin),
 		BusinessID: 7,
 	}, 11)
 	if err != nil {
@@ -657,7 +657,7 @@ func TestGetBranchAppointments_WhenManagerRequestsAnotherBranch_ShouldReturnForb
 	managerBranchID := int64(11)
 
 	_, err := svc.GetBranchAppointments(ctx, &auth.AccessClaims{
-		RoleName: string(domain.RoleManager),
+		RoleName: string(auth.RoleManager),
 		BranchID: &managerBranchID,
 	}, 12, time.Now())
 	if !errors.Is(err, domain.ErrForbidden) {

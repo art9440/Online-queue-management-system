@@ -202,7 +202,7 @@ func TestGetBranchClients_WhenBusinessAdminIsAuthorized_ShouldReturnClients(t *t
 		UserID:     42,
 		Login:      "owner@example.com",
 		RoleID:     2,
-		RoleName:   string(branchesdomain.RoleBusinessAdmin),
+		RoleName:   string(sharedauth.RoleBusinessAdmin),
 		BusinessID: 7,
 	})
 
@@ -229,7 +229,7 @@ func TestGetBranchAppointments_WhenManagerIsAuthorized_ShouldReturnAppointments(
 		UserID:     43,
 		Login:      "manager@example.com",
 		RoleID:     3,
-		RoleName:   string(branchesdomain.RoleManager),
+		RoleName:   string(sharedauth.RoleManager),
 		BusinessID: 7,
 		BranchID:   &branchID,
 	})
@@ -256,7 +256,7 @@ func TestGetBranchAppointments_WhenDateIsInvalid_ShouldReturnBadRequest(t *testi
 		UserID:     43,
 		Login:      "manager@example.com",
 		RoleID:     3,
-		RoleName:   string(branchesdomain.RoleManager),
+		RoleName:   string(sharedauth.RoleManager),
 		BusinessID: 7,
 		BranchID:   &branchID,
 	})
@@ -274,7 +274,7 @@ func TestGetBranchClients_WhenManagerRequestsAnotherBranch_ShouldReturnForbidden
 		UserID:     43,
 		Login:      "manager@example.com",
 		RoleID:     3,
-		RoleName:   string(branchesdomain.RoleManager),
+		RoleName:   string(sharedauth.RoleManager),
 		BusinessID: 7,
 		BranchID:   &branchID,
 	})
