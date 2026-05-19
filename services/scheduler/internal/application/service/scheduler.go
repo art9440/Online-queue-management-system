@@ -7,7 +7,10 @@ import (
 	"time"
 )
 
-const telegramChannel = "telegram"
+const (
+	telegramChannel = "telegram"
+	emailChannel    = "email"
+)
 
 type NotificationRepository interface {
 	FetchDueByChannel(ctx context.Context, now time.Time, channel string, limit int64) ([]Notification, error)
@@ -20,10 +23,11 @@ type Dispatcher interface {
 }
 
 type Scheduler struct {
-	repo         NotificationRepository
-	dispatcher   Dispatcher
-	pollInterval time.Duration
-	batchSize    int
+	repo               NotificationRepository
+	telegramDispatcher Dispatcher
+	emailDispatcher    Dispatcher
+	pollInterval       time.Duration
+	batchSize          int
 }
 
 type Notification struct {
@@ -37,14 +41,25 @@ type Notification struct {
 	Employee    string
 	StartTime   time.Time
 	Description string
+	Email       string
+	Subject     string
+	Body        string
+	HTMLBody    string
 }
 
-func New(repo NotificationRepository, dispatcher Dispatcher, pollInterval time.Duration, batchSize int) *Scheduler {
+func New(
+	repo NotificationRepository,
+	telegramDispatcher Dispatcher,
+	emailDispatcher Dispatcher,
+	pollInterval time.Duration,
+	batchSize int,
+) *Scheduler {
 	return &Scheduler{
-		repo:         repo,
-		dispatcher:   dispatcher,
-		pollInterval: pollInterval,
-		batchSize:    batchSize,
+		repo:               repo,
+		telegramDispatcher: telegramDispatcher,
+		emailDispatcher:    emailDispatcher,
+		pollInterval:       pollInterval,
+		batchSize:          batchSize,
 	}
 }
 
@@ -80,16 +95,49 @@ func (s *Scheduler) tick(ctx context.Context) error {
 	log := logger.From(ctx)
 
 	now := time.Now()
-	notifications, err := s.repo.FetchDueByChannel(ctx, now, telegramChannel, int64(s.batchSize))
+	var dispatchErrors error
+
+	telegramProcessed, err := s.dispatchChannel(ctx, now, telegramChannel, s.telegramDispatcher)
 	if err != nil {
-		return err
+		dispatchErrors = errors.Join(dispatchErrors, err)
+	}
+
+	emailProcessed, err := s.dispatchChannel(ctx, now, emailChannel, s.emailDispatcher)
+	if err != nil {
+		dispatchErrors = errors.Join(dispatchErrors, err)
+	}
+
+	log.Info(
+		"scheduler tick completed",
+		"telegram_notifications", telegramProcessed,
+		"email_notifications", emailProcessed,
+		"batch_size", s.batchSize,
+	)
+	return dispatchErrors
+}
+
+func (s *Scheduler) dispatchChannel(
+	ctx context.Context,
+	now time.Time,
+	channel string,
+	dispatcher Dispatcher,
+) (int, error) {
+	log := logger.From(ctx)
+
+	if dispatcher == nil {
+		return 0, nil
+	}
+
+	notifications, err := s.repo.FetchDueByChannel(ctx, now, channel, int64(s.batchSize))
+	if err != nil {
+		return 0, err
 	}
 
 	var dispatchErrors error
 	for i := range notifications {
 		notification := notifications[i]
-		if err := s.dispatcher.Dispatch(ctx, &notification); err != nil {
-			log.Error("failed to dispatch telegram notification", "notification_id", notification.ID, "err", err)
+		if err := dispatcher.Dispatch(ctx, &notification); err != nil {
+			log.Error("failed to dispatch notification", "notification_id", notification.ID, "channel", channel, "err", err)
 			if markErr := s.repo.MarkFailed(ctx, notification.ID, time.Now(), err.Error()); markErr != nil {
 				log.Error("failed to mark notification as failed", "notification_id", notification.ID, "err", markErr)
 				dispatchErrors = errors.Join(dispatchErrors, markErr)
@@ -104,13 +152,8 @@ func (s *Scheduler) tick(ctx context.Context) error {
 			continue
 		}
 
-		log.Info("telegram notification dispatched", "notification_id", notification.ID)
+		log.Info("notification dispatched", "notification_id", notification.ID, "channel", channel)
 	}
 
-	log.Info(
-		"scheduler tick completed",
-		"telegram_notifications", len(notifications),
-		"batch_size", s.batchSize,
-	)
-	return dispatchErrors
+	return len(notifications), dispatchErrors
 }

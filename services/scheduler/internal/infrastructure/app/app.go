@@ -1,11 +1,13 @@
 package app
 
 import (
+	"Online-queue-management-system/libs/email"
 	"Online-queue-management-system/libs/logger"
 	"Online-queue-management-system/libs/redisclient"
 	"Online-queue-management-system/services/scheduler/config"
 	"Online-queue-management-system/services/scheduler/internal/application/service"
 	"Online-queue-management-system/services/scheduler/internal/infrastructure/bot"
+	emaildispatcher "Online-queue-management-system/services/scheduler/internal/infrastructure/email"
 	redisrepo "Online-queue-management-system/services/scheduler/internal/infrastructure/redis"
 	"context"
 	"fmt"
@@ -35,8 +37,10 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	}
 
 	repo := redisrepo.NewNotificationRepository(rdb)
-	dispatcher := bot.NewDispatcher(cfg.BotURL)
-	scheduler := service.New(repo, dispatcher, cfg.PollInterval, cfg.BatchSize)
+	telegramDispatcher := bot.NewDispatcher(cfg.BotURL)
+	emailSender := email.NewEmailSender(cfg.EmailSenderCfg)
+	emailDispatcher := emaildispatcher.NewDispatcher(emailSender)
+	scheduler := service.New(repo, telegramDispatcher, emailDispatcher, cfg.PollInterval, cfg.BatchSize)
 
 	return &App{
 		scheduler: scheduler,

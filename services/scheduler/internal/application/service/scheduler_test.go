@@ -12,15 +12,15 @@ func TestTick_WhenTelegramNotificationIsDue_ShouldDispatchAndMarkSent(t *testing
 	repo := &fakeNotificationRepo{
 		notifications: []Notification{{ID: "notification-1", Channel: telegramChannel}},
 	}
-	dispatcher := &fakeDispatcher{}
-	scheduler := New(repo, dispatcher, time.Second, 100)
+	telegramDispatcher := &fakeDispatcher{}
+	scheduler := New(repo, telegramDispatcher, nil, time.Second, 100)
 
 	if err := scheduler.tick(ctx); err != nil {
 		t.Fatalf("tick returned error: %v", err)
 	}
 
-	if dispatcher.calls != 1 {
-		t.Fatalf("expected one dispatch call, got %d", dispatcher.calls)
+	if telegramDispatcher.calls != 1 {
+		t.Fatalf("expected one dispatch call, got %d", telegramDispatcher.calls)
 	}
 	if repo.sentID != "notification-1" {
 		t.Fatalf("expected notification to be marked sent, got %q", repo.sentID)
@@ -35,8 +35,8 @@ func TestTick_WhenTelegramDispatchFails_ShouldMarkFailed(t *testing.T) {
 	repo := &fakeNotificationRepo{
 		notifications: []Notification{{ID: "notification-1", Channel: telegramChannel}},
 	}
-	dispatcher := &fakeDispatcher{err: errors.New("bot unavailable")}
-	scheduler := New(repo, dispatcher, time.Second, 100)
+	telegramDispatcher := &fakeDispatcher{err: errors.New("bot unavailable")}
+	scheduler := New(repo, telegramDispatcher, nil, time.Second, 100)
 
 	if err := scheduler.tick(ctx); err == nil {
 		t.Fatal("expected tick to return dispatch error")
@@ -50,6 +50,26 @@ func TestTick_WhenTelegramDispatchFails_ShouldMarkFailed(t *testing.T) {
 	}
 	if repo.failReason != "bot unavailable" {
 		t.Fatalf("expected failure reason to be saved, got %q", repo.failReason)
+	}
+}
+
+func TestTick_WhenEmailNotificationIsDue_ShouldDispatchAndMarkSent(t *testing.T) {
+	ctx := context.Background()
+	repo := &fakeNotificationRepo{
+		notifications: []Notification{{ID: "notification-1", Channel: emailChannel, Email: "client@example.com"}},
+	}
+	emailDispatcher := &fakeDispatcher{}
+	scheduler := New(repo, nil, emailDispatcher, time.Second, 100)
+
+	if err := scheduler.tick(ctx); err != nil {
+		t.Fatalf("tick returned error: %v", err)
+	}
+
+	if emailDispatcher.calls != 1 {
+		t.Fatalf("expected one email dispatch call, got %d", emailDispatcher.calls)
+	}
+	if repo.sentID != "notification-1" {
+		t.Fatalf("expected notification to be marked sent, got %q", repo.sentID)
 	}
 }
 

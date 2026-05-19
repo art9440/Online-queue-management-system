@@ -13,10 +13,11 @@ const (
 )
 
 type Config struct {
-	RedisCfg     libconfig.RedisConfig
-	PollInterval time.Duration
-	BatchSize    int
-	BotURL       string
+	RedisCfg       libconfig.RedisConfig
+	EmailSenderCfg libconfig.EmailSenderConfig
+	PollInterval   time.Duration
+	BatchSize      int
+	BotURL         string
 }
 
 func LoadConfig(ctx context.Context) (*Config, error) {
@@ -35,11 +36,38 @@ func LoadConfig(ctx context.Context) (*Config, error) {
 		return nil, err
 	}
 
+	smtpHost, err := libconfig.MustGet(ctx, "SMTP_HOST")
+	if err != nil {
+		return nil, err
+	}
+
+	smtpPort, err := libconfig.GetInt(ctx, "SMTP_PORT")
+	if err != nil {
+		return nil, err
+	}
+
+	smtpUser, err := libconfig.MustGet(ctx, "SMTP_USER")
+	if err != nil {
+		return nil, err
+	}
+
+	smtpPass, err := libconfig.MustGet(ctx, "SMTP_PASS")
+	if err != nil {
+		return nil, err
+	}
+
 	return &Config{
 		RedisCfg: libconfig.RedisConfig{
 			RedisAddr:     redisAddr,
 			RedisPassword: redisPassword,
 			RedisDB:       redisDB,
+		},
+		EmailSenderCfg: libconfig.EmailSenderConfig{
+			SMTPHost:    smtpHost,
+			SMTPPort:    smtpPort,
+			SMTPUser:    smtpUser,
+			SMTPPass:    smtpPass,
+			SendTimeOut: libconfig.GetDurationDefault(ctx, "EMAIL_TIMEOUT", 20*time.Second),
 		},
 		PollInterval: libconfig.GetDurationDefault(ctx, "SCHEDULER_POLL_INTERVAL", defaultPollInterval),
 		BatchSize:    libconfig.GetIntDefault(ctx, "SCHEDULER_BATCH_SIZE", defaultBatchSize),
