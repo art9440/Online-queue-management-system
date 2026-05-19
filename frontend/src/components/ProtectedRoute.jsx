@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { hasRole, getRoleName } from "../constants/roles"
 
 export const ProtectedRoute = ({ children, allowedRoles = []}) => {
-    const { user, loading } = useAuth();
+    const { user, loading, getRedirectPath } = useAuth();
     const location = useLocation();
 
     if (loading) {
@@ -19,9 +19,7 @@ export const ProtectedRoute = ({ children, allowedRoles = []}) => {
     }
 
     if (allowedRoles.length > 0 && user.role_id && !hasRole(user.role_id, allowedRoles)){
-        if (hasRole(user.role_id, allowedRoles)) {
-            return <Navigate to="/admin" replace />;
-        } 
+        return <Navigate to={getRedirectPath(user)} replace />;
     }
 
     if (location.pathname.match(/\/admin\/branch\/(\d+)/)) {

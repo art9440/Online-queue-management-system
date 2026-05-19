@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { authApi } from "../api/auth";
 import { getRoleName } from "../constants/roles";
 
@@ -10,7 +10,7 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    const getRedirectPath = (userData) => {
+    const getRedirectPath = useCallback((userData) => {
         if (!userData) return '/login';
 
         const roleName = getRoleName(userData.role_id);
@@ -18,19 +18,15 @@ export const AuthProvider = ({ children }) => {
             return '/admin';
         }
         if (roleName === 'manager' && userData.branch_id) {
-            return `/admin/branch/${userData.branch_id}`;
+            return '/manager';
         }
         if (roleName === 'employee') {
             return '/admin/schedule';
         }
         return '/admin';
-    };
-    
-    useEffect(() => {
-        checkAuth();
     }, []);
-
-    const checkAuth = async () => {
+    
+    const checkAuth = useCallback(async () => {
         try {
             const response = await authApi.me();
             setUser(response.data);
@@ -43,9 +39,26 @@ export const AuthProvider = ({ children }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const login = async(login, password) => {
+    useEffect(() => {
+        checkAuth();
+    }, [checkAuth]);
+
+    useEffect(() => {
+        const handleUnauthorized = () => {
+            setUser(null);
+            setError('Сессия истекла. Войдите снова.');
+        };
+
+        window.addEventListener('auth:unauthorized', handleUnauthorized);
+
+        return () => {
+            window.removeEventListener('auth:unauthorized', handleUnauthorized);
+        };
+    }, []);
+
+    const login = useCallback(async(login, password) => {
         setError(null);
         try {
             await authApi.login(login, password);
@@ -60,9 +73,9 @@ export const AuthProvider = ({ children }) => {
             setError(msg);
             throw new Error(msg);
         }
-    };
+    }, []);
 
-    const logout = async () => {
+    const logout = useCallback(async () => {
         try {
             await authApi.logout();
         } catch (err) {
@@ -70,9 +83,9 @@ export const AuthProvider = ({ children }) => {
         }
         setUser(null);
         setError(null);
-    };
+    }, []);
 
-    const value = {
+    const value = useMemo(() => ({
         user,
         loading,
         error,
@@ -80,7 +93,7 @@ export const AuthProvider = ({ children }) => {
         logout,
         isAuthenticated: Boolean(user),
         getRedirectPath,
-    };
+    }), [error, getRedirectPath, loading, login, logout, user]);
 
     return (
         <AuthContext.Provider value={value}>
