@@ -17,6 +17,7 @@ func TestGetByBusinessID_Success(t *testing.T) {
 		t.Fatalf("failed to create mock db: %v", err)
 	}
 	defer func() {
+		mock.ExpectClose()
 		if err := db.Close(); err != nil {
 			t.Errorf("failed to close db: %v", err)
 		}
@@ -63,6 +64,7 @@ func TestGetByBusinessID_Empty(t *testing.T) {
 		t.Fatalf("failed to create mock db: %v", err)
 	}
 	defer func() {
+		mock.ExpectClose()
 		if err := db.Close(); err != nil {
 			t.Errorf("failed to close db: %v", err)
 		}
@@ -99,6 +101,7 @@ func TestGetByBusinessID_QueryError(t *testing.T) {
 		t.Fatalf("failed to create mock db: %v", err)
 	}
 	defer func() {
+		mock.ExpectClose()
 		if err := db.Close(); err != nil {
 			t.Errorf("failed to close db: %v", err)
 		}
@@ -135,6 +138,7 @@ func TestGetByID_Success(t *testing.T) {
 		t.Fatalf("failed to create mock db: %v", err)
 	}
 	defer func() {
+		mock.ExpectClose()
 		if err := db.Close(); err != nil {
 			t.Errorf("failed to close db: %v", err)
 		}
@@ -177,6 +181,7 @@ func TestGetByID_NotFound(t *testing.T) {
 		t.Fatalf("failed to create mock db: %v", err)
 	}
 	defer func() {
+		mock.ExpectClose()
 		if err := db.Close(); err != nil {
 			t.Errorf("failed to close db: %v", err)
 		}
@@ -211,6 +216,7 @@ func TestGetByID_QueryError(t *testing.T) {
 		t.Fatalf("failed to create mock db: %v", err)
 	}
 	defer func() {
+		mock.ExpectClose()
 		if err := db.Close(); err != nil {
 			t.Errorf("failed to close db: %v", err)
 		}
@@ -247,6 +253,7 @@ func TestGetEmployeesByBranchID_Success(t *testing.T) {
 		t.Fatalf("failed to create mock db: %v", err)
 	}
 	defer func() {
+		mock.ExpectClose()
 		if err := db.Close(); err != nil {
 			t.Errorf("failed to close db: %v", err)
 		}
@@ -293,6 +300,7 @@ func TestGetEmployeesByBranchID_Empty(t *testing.T) {
 		t.Fatalf("failed to create mock db: %v", err)
 	}
 	defer func() {
+		mock.ExpectClose()
 		if err := db.Close(); err != nil {
 			t.Errorf("failed to close db: %v", err)
 		}
@@ -329,6 +337,7 @@ func TestGetEmployeesByBranchID_QueryError(t *testing.T) {
 		t.Fatalf("failed to create mock db: %v", err)
 	}
 	defer func() {
+		mock.ExpectClose()
 		if err := db.Close(); err != nil {
 			t.Errorf("failed to close db: %v", err)
 		}
@@ -365,6 +374,7 @@ func TestGetEmployeesByBranchID_ScanError(t *testing.T) {
 		t.Fatalf("failed to create mock db: %v", err)
 	}
 	defer func() {
+		mock.ExpectClose()
 		if err := db.Close(); err != nil {
 			t.Errorf("failed to close db: %v", err)
 		}
