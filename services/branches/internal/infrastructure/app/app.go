@@ -41,6 +41,23 @@ func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg *libconfig.DBC
 	mux.Handle("GET /branches", authMiddleware(http.HandlerFunc(serverImpl.GetBranches)))
 	mux.Handle("GET /branches/{id}/clients", authMiddleware(http.HandlerFunc(serverImpl.GetBranchClients)))
 	mux.Handle("GET /branches/{id}/bookings", authMiddleware(http.HandlerFunc(serverImpl.GetBranchAppointments)))
+	mux.Handle("/branches", authMiddleware(http.HandlerFunc(serverImpl.GetBranches)))
+	mux.Handle("/branches/{id}/employees",
+		authMiddleware(http.HandlerFunc(serverImpl.GetBranchEmployees)))
+	mux.Handle("/services",
+		authMiddleware(http.HandlerFunc(serverImpl.GetServices)))
+	mux.Handle("/services/{serviceId}/branches",
+		authMiddleware(http.HandlerFunc(serverImpl.GetBranchesWithService)))
+	mux.Handle("/services/{serviceId}/branches/{branchId}/employees",
+		authMiddleware(http.HandlerFunc(serverImpl.GetEmployeesForService)))
+
+	// Public endpoints - no authentication required
+	mux.Handle("/public/{registrationSlug}/services",
+		http.HandlerFunc(serverImpl.GetPublicServices))
+	mux.Handle("/public/{registrationSlug}/services/{serviceId}/branches",
+		http.HandlerFunc(serverImpl.GetPublicBranchesWithService))
+	mux.Handle("/public/{registrationSlug}/services/{serviceId}/branches/{branchId}/employees",
+		http.HandlerFunc(serverImpl.GetPublicEmployeesForService))
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)

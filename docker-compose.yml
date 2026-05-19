@@ -90,6 +90,46 @@ services:
     env_file:
       - .env
 
+  booking:
+    build:
+      context: .
+      dockerfile: ./services/booking/booking.Dockerfile
+    container_name: online_queue_booking
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    ports:
+      - "8084:8084"
+    env_file:
+      - .env
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: ./services/scheduler/scheduler.Dockerfile
+    container_name: online_queue_scheduler
+    depends_on:
+      redis:
+        condition: service_healthy
+      bot:
+        condition: service_started
+    env_file:
+      - .env
+
+  bot:
+    build:
+      context: .
+      dockerfile: ./services/bot/bot.Dockerfile
+    container_name: online_queue_bot
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "8085:8085"
+    env_file:
+      - .env
 
 volumes:
   postgres_data:

@@ -36,3 +36,8 @@ func FromContext(ctx context.Context) *AccessClaims {
 	user, _ := ctx.Value(userKey).(*AccessClaims)
 	return user
 }
+
+// ContextWithUser is a test helper function to create a context with user claims
+func ContextWithUser(ctx context.Context, user *AccessClaims) context.Context {
+	return context.WithValue(ctx, userKey, user)
+}
