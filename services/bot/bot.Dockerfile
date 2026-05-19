@@ -8,14 +8,16 @@ RUN go mod download
 COPY services ./services
 COPY libs ./libs
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/scheduler ./services/scheduler/cmd
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/bot ./services/bot/cmd
 
 FROM debian:bookworm-slim@sha256:67b30a61dc87758f0caf819646104f29ecbda97d920aaf5edc834128ac8493d3
 
 WORKDIR /app
 
-COPY --from=builder --chown=root:root --chmod=555 /app/scheduler /app/scheduler
+COPY --from=builder --chown=root:root --chmod=555 /app/bot /app/bot
 
 USER 65532:65532
 
-CMD ["/app/scheduler"]
+EXPOSE 8085
+
+CMD ["/app/bot"]

@@ -1,4 +1,4 @@
-FROM golang:1.26 AS builder
+FROM golang:1.26@sha256:313faae491b410a35402c05d35e7518ae99103d957308e940e1ae2cfa0aac29b AS builder
 
 WORKDIR /app
 
@@ -10,11 +10,13 @@ COPY libs ./libs
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o /app/booking ./services/booking/cmd
 
-FROM debian:bookworm-slim
+FROM debian:bookworm-slim@sha256:67b30a61dc87758f0caf819646104f29ecbda97d920aaf5edc834128ac8493d3
 
 WORKDIR /app
 
-COPY --from=builder /app/booking /app/booking
+COPY --from=builder --chown=root:root --chmod=555 /app/booking /app/booking
+
+USER 65532:65532
 
 EXPOSE 8084
 
