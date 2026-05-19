@@ -18,11 +18,13 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - online_queue_network
 
   redis:
     image: redis:7
     container_name: redis
-    
+
     command: >
       redis-server
       --requirepass ${REDIS_PASSWORD}
@@ -34,6 +36,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    networks:
+      - online_queue_network
 
   migrate:
     build:
@@ -46,6 +50,8 @@ services:
     env_file:
       - .env
     restart: "no"
+    networks:
+      - online_queue_network
 
   auth:
     build:
@@ -61,6 +67,11 @@ services:
       - "8082:8082"
     env_file:
       - .env
+    environment:
+      SERVICE_NAME: auth
+      LOGSTASH_TCP_ADDR: logstash:5045
+    networks:
+      - online_queue_network
 
   registration:
     build:
@@ -76,6 +87,11 @@ services:
       - "8081:8081"
     env_file:
       - .env
+    environment:
+      SERVICE_NAME: registration
+      LOGSTASH_TCP_ADDR: logstash:5045
+    networks:
+      - online_queue_network
 
   branches:
     build:
@@ -89,6 +105,11 @@ services:
       - "8083:8083"
     env_file:
       - .env
+    environment:
+      SERVICE_NAME: branches
+      LOGSTASH_TCP_ADDR: logstash:5045
+    networks:
+      - online_queue_network
 
   booking:
     build:
@@ -104,6 +125,11 @@ services:
       - "8084:8084"
     env_file:
       - .env
+    environment:
+      SERVICE_NAME: booking
+      LOGSTASH_TCP_ADDR: logstash:5045
+    networks:
+      - online_queue_network
 
   scheduler:
     build:
@@ -117,6 +143,11 @@ services:
         condition: service_started
     env_file:
       - .env
+    environment:
+      SERVICE_NAME: scheduler
+      LOGSTASH_TCP_ADDR: logstash:5045
+    networks:
+      - online_queue_network
 
   bot:
     build:
@@ -130,12 +161,17 @@ services:
       - "8085:8085"
     env_file:
       - .env
+    environment:
+      SERVICE_NAME: bot
+      LOGSTASH_TCP_ADDR: logstash:5045
+    networks:
+      - online_queue_network
 
 volumes:
   postgres_data:
 
 
 networks:
-  default:
+  online_queue_network:
     name: online_queue_network
     external: true

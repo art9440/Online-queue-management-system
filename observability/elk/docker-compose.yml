@@ -10,7 +10,7 @@ services:
     ports:
       - "9200:9200"
     volumes:
-      - ./elastic-data:/usr/share/elasticsearch/data
+      - ./elastic-data:/usr/share/elasticsearch/data:Z
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://elasticsearch:9200/_cluster/health | grep -E -q '\"status\":\"(green|yellow)\"' || exit 1"]
       interval: 10s
@@ -27,7 +27,7 @@ services:
       - "5045:5045"
       - "9600:9600"
     volumes:
-      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf:Z
     depends_on:
       elasticsearch:
         condition: service_healthy

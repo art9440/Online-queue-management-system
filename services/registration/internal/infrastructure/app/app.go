@@ -13,6 +13,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 )
@@ -66,7 +67,10 @@ func NewApp(ctx context.Context, cfg *config.Config, dbCfg *libconfig.DBConfig) 
 
 	httpServer := &http.Server{
 		Addr:    ":" + cfg.RegCfg.RegistrationPort,
-		Handler: handler,
+		Handler: middleware.RequestLogger(handler),
+		BaseContext: func(_ net.Listener) context.Context {
+			return ctx
+		},
 	}
 
 	return &App{svc: svc,
