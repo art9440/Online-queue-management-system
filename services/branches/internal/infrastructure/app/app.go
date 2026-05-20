@@ -69,7 +69,7 @@ func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg *libconfig.DBC
 
 	server := &http.Server{
 		Addr:    ":" + cfg.BranchesCfg.BranchesPort,
-		Handler: middleware.RequestLogger(CorsMux),
+		Handler: middleware.TraceRequests(middleware.RequestLogger(CorsMux)),
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
 		},

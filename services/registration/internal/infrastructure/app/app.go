@@ -67,7 +67,7 @@ func NewApp(ctx context.Context, cfg *config.Config, dbCfg *libconfig.DBConfig) 
 
 	httpServer := &http.Server{
 		Addr:    ":" + cfg.RegCfg.RegistrationPort,
-		Handler: middleware.RequestLogger(handler),
+		Handler: middleware.TraceRequests(middleware.RequestLogger(handler)),
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
 		},

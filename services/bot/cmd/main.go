@@ -2,6 +2,7 @@ package main
 
 import (
 	"Online-queue-management-system/libs/logger"
+	"Online-queue-management-system/libs/tracing"
 	"Online-queue-management-system/services/bot/config"
 	"Online-queue-management-system/services/bot/internal/infrastructure/app"
 	"context"
@@ -23,6 +24,8 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 
 	ctx = logger.With(ctx, log)
+	shutdownTracing := tracing.InitFromEnv(ctx, "bot", log)
+	defer shutdownTracing()
 
 	if err := run(ctx); err != nil {
 		slog.Error("telegram bot stopped with error", "err", err)

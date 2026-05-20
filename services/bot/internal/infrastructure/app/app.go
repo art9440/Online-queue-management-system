@@ -57,7 +57,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 
 	httpServer := &http.Server{
 		Addr:    ":" + cfg.BotPort,
-		Handler: middleware.RequestLogger(middleware.CORSMiddleware(mux)),
+		Handler: middleware.TraceRequests(middleware.RequestLogger(middleware.CORSMiddleware(mux))),
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
 		},

@@ -118,7 +118,7 @@ func NewApp(
 
 	server := &http.Server{
 		Addr:    ":" + cfg.BookingPort,
-		Handler: middleware.RequestLogger(corsMux),
+		Handler: middleware.TraceRequests(middleware.RequestLogger(corsMux)),
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
 		},

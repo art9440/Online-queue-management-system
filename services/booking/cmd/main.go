@@ -3,6 +3,7 @@ package main
 import (
 	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/logger"
+	"Online-queue-management-system/libs/tracing"
 	"Online-queue-management-system/services/booking/config"
 	"Online-queue-management-system/services/booking/internal/infrastructure/app"
 	"context"
@@ -24,6 +25,8 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 
 	ctx = logger.With(ctx, log)
+	shutdownTracing := tracing.InitFromEnv(ctx, "booking", log)
+	defer shutdownTracing()
 
 	if err := run(ctx); err != nil {
 		slog.Error("something went wrong while running booking service", "err", err)

@@ -9,6 +9,12 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const sendNotificationPath = "/telegram/notifications"
@@ -39,8 +45,22 @@ func NewDispatcher(botURL string) *Dispatcher {
 }
 
 func (d *Dispatcher) Dispatch(ctx context.Context, notification *service.Notification) error {
+	ctx, span := otel.Tracer("Online-queue-management-system/scheduler").Start(
+		ctx,
+		"POST "+sendNotificationPath,
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			attribute.String("http.request.method", http.MethodPost),
+			attribute.String("url.full", d.botURL+sendNotificationPath),
+			attribute.String("notification.channel", "telegram"),
+		),
+	)
+	defer span.End()
+
 	body, err := json.Marshal(requestFromNotification(notification))
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
 
@@ -51,12 +71,17 @@ func (d *Dispatcher) Dispatch(ctx context.Context, notification *service.Notific
 		bytes.NewReader(body),
 	)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(req.Header))
 
 	resp, err := d.httpClient.Do(req)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
 	defer func() {
@@ -64,9 +89,12 @@ func (d *Dispatcher) Dispatch(ctx context.Context, notification *service.Notific
 	}()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		span.SetAttributes(attribute.Int("http.response.status_code", resp.StatusCode))
+		span.SetStatus(codes.Error, fmt.Sprintf("HTTP %d", resp.StatusCode))
 		return fmt.Errorf("telegram bot returned status %d", resp.StatusCode)
 	}
 
+	span.SetAttributes(attribute.Int("http.response.status_code", resp.StatusCode))
 	return nil
 }
 

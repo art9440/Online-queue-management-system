@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"Online-queue-management-system/libs/logger"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type loggingResponseWriter struct {
@@ -49,6 +50,12 @@ func RequestLogger(next http.Handler) http.Handler {
 			"http_method", r.Method,
 			"http_path", r.URL.Path,
 		)
+		if spanCtx := trace.SpanContextFromContext(r.Context()); spanCtx.IsValid() {
+			requestLog = requestLog.With(
+				"trace_id", spanCtx.TraceID().String(),
+				"span_id", spanCtx.SpanID().String(),
+			)
+		}
 		ctx := logger.With(r.Context(), requestLog)
 
 		next.ServeHTTP(lrw, r.WithContext(ctx))
