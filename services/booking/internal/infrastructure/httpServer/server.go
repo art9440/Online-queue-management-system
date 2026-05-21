@@ -532,6 +532,26 @@ func (s *HttpServer) GoogleCalendarCallback(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (s *HttpServer) PublicGoogleCalendarAuthURL(w http.ResponseWriter, r *http.Request) {
+	appointmentID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || appointmentID <= 0 {
+		http.Error(w, domain.ErrInvalidAppointmentID.Error(), http.StatusBadRequest)
+		return
+	}
+
+	authURL, err := s.svc.PublicGoogleCalendarAuthURL(
+		r.Context(),
+		appointmentID,
+		r.URL.Query().Get("token"),
+	)
+	if err != nil {
+		writeGoogleCalendarError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, dto.GoogleCalendarAuthResponse{URL: authURL})
+}
+
 func (s *HttpServer) ExportAppointmentToGoogleCalendar(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user := auth.FromContext(ctx)

@@ -105,6 +105,11 @@ func NewApp(
 	)
 
 	mux.Handle(
+		"GET /public/appointments/{id}/google-calendar/auth-url",
+		http.HandlerFunc(serverImpl.PublicGoogleCalendarAuthURL),
+	)
+
+	mux.Handle(
 		"POST /appointments/{id}/google-calendar",
 		authMiddleware(http.HandlerFunc(serverImpl.ExportAppointmentToGoogleCalendar)),
 	)
