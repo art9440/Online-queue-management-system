@@ -13,9 +13,12 @@ import (
 )
 
 const (
-	oauthStatePrefix = "google-calendar:oauth-state:"
-	tokenPrefix      = "google-calendar:token:"
-	oauthStateTTL    = 10 * time.Minute
+	oauthStatePrefix        = "google-calendar:oauth-state:"
+	publicExportTokenPrefix = "google-calendar:public-export:"
+	publicOAuthStatePrefix  = "google-calendar:public-oauth-state:"
+	tokenPrefix             = "google-calendar:token:"
+	oauthStateTTL           = 10 * time.Minute
+	publicExportTokenTTL    = 7 * 24 * time.Hour
 )
 
 type CalendarTokenRepository struct {
@@ -49,6 +52,42 @@ func (r *CalendarTokenRepository) SaveToken(ctx context.Context, userID int64, t
 	}
 
 	return r.client.Set(ctx, tokenKey(userID), raw, 0).Err()
+}
+
+func (r *CalendarTokenRepository) SavePublicExportToken(
+	ctx context.Context,
+	token string,
+	appointmentID int64,
+) error {
+	return r.client.Set(ctx, publicExportTokenPrefix+token, appointmentID, publicExportTokenTTL).Err()
+}
+
+func (r *CalendarTokenRepository) GetPublicExportToken(ctx context.Context, token string) (int64, error) {
+	appointmentID, err := r.client.Get(ctx, publicExportTokenPrefix+token).Int64()
+	if errors.Is(err, goredis.Nil) {
+		return 0, domain.ErrGoogleCalendarNotLinked
+	}
+	return appointmentID, err
+}
+
+func (r *CalendarTokenRepository) SavePublicOAuthState(
+	ctx context.Context,
+	state string,
+	appointmentID int64,
+) error {
+	return r.client.Set(ctx, publicOAuthStatePrefix+state, appointmentID, oauthStateTTL).Err()
+}
+
+func (r *CalendarTokenRepository) GetPublicOAuthState(ctx context.Context, state string) (int64, error) {
+	appointmentID, err := r.client.Get(ctx, publicOAuthStatePrefix+state).Int64()
+	if errors.Is(err, goredis.Nil) {
+		return 0, domain.ErrGoogleCalendarNotLinked
+	}
+	return appointmentID, err
+}
+
+func (r *CalendarTokenRepository) DeletePublicOAuthState(ctx context.Context, state string) error {
+	return r.client.Del(ctx, publicOAuthStatePrefix+state).Err()
 }
 
 func (r *CalendarTokenRepository) GetToken(ctx context.Context, userID int64) (domain.GoogleCalendarToken, error) {

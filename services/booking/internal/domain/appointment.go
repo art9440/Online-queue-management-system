@@ -62,6 +62,8 @@ type CreateAppointmentOutput struct {
 	EndTime   time.Time
 	Status    AppointmentStatus
 	Comment   *string
+
+	GoogleCalendarExportURL string
 }
 
 type AvailableSlotsInput struct {
