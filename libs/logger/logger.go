@@ -66,6 +66,7 @@ func (h multiHandler) Enabled(ctx context.Context, level slog.Level) bool {
 	return false
 }
 
+//nolint:gocritic // slog.Handler requires slog.Record to be passed by value.
 func (h multiHandler) Handle(ctx context.Context, record slog.Record) error {
 	for _, handler := range h.handlers {
 		if handler.Enabled(ctx, record.Level) {
