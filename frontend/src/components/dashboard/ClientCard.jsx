@@ -1,10 +1,32 @@
-import { Phone, Sparkles, User } from "lucide-react";
+import { CalendarDays, Clock, Phone, Sparkles, User } from "lucide-react";
 
 const getClientName = (client) =>
   [client.surname, client.name].filter(Boolean).join(" ") || client.name;
 
-export const ClientCard = ({ client }) => {
+const formatTime = (value) => {
+  if (!value) return "";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
+
+const getBookingTime = (booking) => {
+  const start = formatTime(booking.start_time);
+  const end = formatTime(booking.end_time);
+
+  if (!start) return "";
+  return end ? `${start} - ${end}` : start;
+};
+
+export const ClientCard = ({ client, bookings = [] }) => {
   if (!client) return null;
+
+  const nearestBooking = bookings[0];
 
   return (
     <article className="rounded-2xl border border-white/70 bg-white/90 p-4 shadow-sm shadow-slate-200/80 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-100/70">
@@ -40,6 +62,39 @@ export const ClientCard = ({ client }) => {
             <Sparkles size={12} />
             <span>Новый</span>
           </span>
+        )}
+      </div>
+
+      <div className="mt-4 rounded-xl bg-indigo-50/70 p-3 ring-1 ring-indigo-100">
+        <div className="flex items-center justify-between gap-3">
+          <p className="flex items-center gap-1.5 text-sm font-medium text-indigo-700">
+            <CalendarDays size={15} />
+            Записей за день
+          </p>
+          <span className="rounded-full bg-white px-2.5 py-1 text-sm font-semibold text-indigo-700">
+            {bookings.length}
+          </span>
+        </div>
+
+        {nearestBooking ? (
+          <div className="mt-3 border-t border-indigo-100 pt-3 text-sm text-slate-700">
+            <p className="font-medium text-slate-950">
+              {nearestBooking.service_name || "Услуга"}
+            </p>
+            <p className="mt-1 flex items-center gap-1.5 text-slate-500">
+              <Clock size={14} />
+              {getBookingTime(nearestBooking)}
+            </p>
+            {nearestBooking.employeeName && (
+              <p className="mt-1 text-slate-500">
+                Мастер: {nearestBooking.employeeName}
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="mt-3 border-t border-indigo-100 pt-3 text-sm text-slate-500">
+            На выбранную дату записей нет.
+          </p>
         )}
       </div>
 
