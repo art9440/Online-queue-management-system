@@ -13,6 +13,10 @@ import (
 )
 
 func main() {
+	os.Exit(runMain())
+}
+
+func runMain() int {
 	log := logger.New(logger.Config{
 		Level:  slog.LevelInfo,
 		JSON:   false,
@@ -22,6 +26,7 @@ func main() {
 	slog.SetDefault(log)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
 	ctx = logger.With(ctx, log)
 	shutdownTracing := tracing.InitFromEnv(ctx, "scheduler", log)
@@ -29,11 +34,10 @@ func main() {
 
 	if err := run(ctx); err != nil {
 		slog.Error("scheduler stopped with error", "err", err)
-		stop()
-		os.Exit(1)
+		return 1
 	}
 
-	stop()
+	return 0
 }
 
 func run(ctx context.Context) error {
