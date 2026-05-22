@@ -2,6 +2,7 @@ package main
 
 import (
 	"Online-queue-management-system/libs/logger"
+	"Online-queue-management-system/libs/tracing"
 	"context"
 	"log/slog"
 	"os/signal"
@@ -22,6 +23,8 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	ctx = logger.With(ctx, log)
+	shutdownTracing := tracing.InitFromEnv(ctx, "auth", log)
+	defer shutdownTracing()
 
 	a, err := app.New(ctx)
 	if err != nil {

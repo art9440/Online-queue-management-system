@@ -7,6 +7,12 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Client struct {
@@ -31,19 +37,39 @@ const (
 func (c *Client) Do(ctx context.Context, req *http.Request) (*http.Response, error) {
 	log := logger.From(ctx)
 	log.Debug("Making HTTP request", "method", req.Method, "url", req.URL.String())
+
+	traceCtx, span := otel.Tracer("Online-queue-management-system/http-client").Start(
+		req.Context(),
+		req.Method+" "+req.URL.Host+req.URL.Path,
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			attribute.String("http.request.method", req.Method),
+			attribute.String("url.full", req.URL.String()),
+			attribute.String("server.address", req.URL.Host),
+		),
+	)
+	defer span.End()
+
+	req = req.WithContext(traceCtx)
+	otel.GetTextMapPropagator().Inject(traceCtx, propagation.HeaderCarrier(req.Header))
 	resp, err := c.client.Do(req)
 
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		log.Error("Error making HTTP request", "method", req.Method, "url", req.URL.String(), "error", err)
 		return nil, fmt.Errorf(ErrMakingRequest, err)
 	}
+	span.SetAttributes(attribute.Int("http.response.status_code", resp.StatusCode))
 
 	if resp.Body == nil {
+		span.SetStatus(codes.Error, "response body is nil")
 		log.Error("Received HTTP response with nil body", "method", req.Method, "url", req.URL.String())
 		return nil, fmt.Errorf("received HTTP response with nil body on method %s to url %s", req.Method, req.URL.String())
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		span.SetStatus(codes.Error, fmt.Sprintf("HTTP %d", resp.StatusCode))
 		log.Error("Received non-successful HTTP status code", "method", req.Method, "url", req.URL.String(), "status", resp.StatusCode)
 		defer func() {
 			if err := resp.Body.Close(); err != nil {

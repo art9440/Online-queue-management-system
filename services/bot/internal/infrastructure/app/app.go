@@ -13,6 +13,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -55,8 +56,11 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	mux.HandleFunc("POST /telegram/notifications", serverImpl.SendNotification)
 
 	httpServer := &http.Server{
-		Addr:              ":" + cfg.BotPort,
-		Handler:           middleware.RequestLogger(middleware.CORSMiddleware(mux)),
+		Addr:    ":" + cfg.BotPort,
+		Handler: middleware.TraceRequests(middleware.RequestLogger(middleware.CORSMiddleware(mux))),
+		BaseContext: func(_ net.Listener) context.Context {
+			return ctx
+		},
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
