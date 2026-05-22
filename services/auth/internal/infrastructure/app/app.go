@@ -3,6 +3,7 @@ package app
 import (
 	"Online-queue-management-system/libs/auth"
 	"Online-queue-management-system/libs/logger"
+	"Online-queue-management-system/libs/metrics"
 	"Online-queue-management-system/libs/middleware"
 	"Online-queue-management-system/libs/redisclient"
 	"context"
@@ -71,12 +72,13 @@ func New(ctx context.Context) (*App, error) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
+	mux.Handle("/metrics", metrics.Handler())
 
 	CorsMux := middleware.CORSMiddleware(mux)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.AuthPort,
-		Handler: middleware.TraceRequests(middleware.RequestLogger(CorsMux)),
+		Handler: middleware.TraceRequests(metrics.Middleware("auth")(middleware.RequestLogger(CorsMux))),
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
 		},
