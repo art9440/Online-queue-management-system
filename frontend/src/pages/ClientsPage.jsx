@@ -1,13 +1,16 @@
 import { useMemo, useState } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { Search, Users } from "lucide-react";
-import { getBranchClients, getBranches } from "../api/branches";
+import {
+  getBranchBookings,
+  getBranchClients,
+  getBranches,
+} from "../api/branches";
 import { ClientCard } from "../components/dashboard/ClientCard";
 import { DashboardTopBar } from "../components/layouts/DashboardTopBar";
 import { Sidebar } from "../components/layouts/Sidebar";
 import { useAuth } from "../context/AuthContext";
 import { clientMatchesSearch } from "../mocks/clientSearch";
-import { getBranchDashboardData } from "../mocks/dashboardMocks";
 
 const normalizeBranch = (branch) => ({
   id: branch.id,
@@ -16,6 +19,7 @@ const normalizeBranch = (branch) => ({
 });
 
 const getIsManagerPath = () => window.location.pathname.startsWith("/manager");
+const getTodayKey = () => new Date().toISOString().slice(0, 10);
 
 const normalizeClient = (client, branch) => ({
   id: client.id,
@@ -29,9 +33,34 @@ const normalizeClient = (client, branch) => ({
   created_at: client.created_at,
 });
 
+const getClientName = (client) =>
+  [client?.surname, client?.name].filter(Boolean).join(" ") || client?.name || "";
+
+const normalizeBooking = (booking, branch) => ({
+  id: booking.id,
+  branch_id: booking.branch_id,
+  branchName: branch.name,
+  client_id: booking.client?.id,
+  client_name: getClientName(booking.client),
+  employee_id: booking.employee_id,
+  employeeName: [booking.employee_surname, booking.employee_name]
+    .filter(Boolean)
+    .join(" "),
+  service_id: booking.service_id,
+  service_name: booking.service_name,
+  start_time: booking.start_time,
+  end_time: booking.end_time,
+  status:
+    booking.status === "cancelled"
+      ? "canceled"
+      : booking.status || "confirmed",
+  comment: booking.comment,
+});
+
 export const ClientsPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [selectedDate, setSelectedDate] = useState(getTodayKey());
   const { user, logout } = useAuth();
   const isManagerPath = getIsManagerPath();
 
@@ -55,6 +84,15 @@ export const ClientsPage = () => {
     })),
   });
 
+  const bookingQueries = useQueries({
+    queries: branches.map((branch) => ({
+      queryKey: ["branches", branch.id, "client-bookings", selectedDate],
+      queryFn: () => getBranchBookings(branch.id, selectedDate),
+      enabled: Boolean(branch.id && selectedDate),
+      retry: 1,
+    })),
+  });
+
   const clients = useMemo(() => {
     const clientMap = new Map();
 
@@ -72,18 +110,35 @@ export const ClientsPage = () => {
     return Array.from(clientMap.values());
   }, [branches, clientQueries]);
 
-  const mockClients = useMemo(() => {
-    const branchIds = branches.map((branch) => branch.id);
-    return getBranchDashboardData(branchIds).clients;
-  }, [branches]);
+  const bookings = useMemo(() => {
+    return branches.flatMap((branch, index) => {
+      const source = bookingQueries[index]?.data || [];
+      return source.map((booking) => normalizeBooking(booking, branch));
+    });
+  }, [branches, bookingQueries]);
 
-  const displayClients = clients.length > 0 ? clients : mockClients;
+  const bookingsByClient = useMemo(() => {
+    const result = new Map();
+
+    bookings.forEach((booking) => {
+      if (!booking.client_id) return;
+
+      const clientBookings = result.get(booking.client_id) || [];
+      result.set(booking.client_id, [...clientBookings, booking]);
+    });
+
+    return result;
+  }, [bookings]);
 
   const isClientsLoading =
-    isLoading || clientQueries.some((query) => query.isLoading);
-  const isClientsError = clientQueries.some((query) => query.isError);
+    isLoading ||
+    clientQueries.some((query) => query.isLoading) ||
+    bookingQueries.some((query) => query.isLoading);
+  const isClientsError =
+    clientQueries.some((query) => query.isError) ||
+    bookingQueries.some((query) => query.isError);
 
-  const visibleClients = displayClients.filter((client) =>
+  const visibleClients = clients.filter((client) =>
     clientMatchesSearch(client, search)
   );
 
@@ -139,6 +194,15 @@ export const ClientsPage = () => {
                 className="w-full bg-transparent text-sm outline-none"
               />
             </label>
+
+            <label className="flex items-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600">
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(event) => setSelectedDate(event.target.value)}
+                className="bg-transparent text-gray-900 outline-none"
+              />
+            </label>
           </div>
 
           {isClientsLoading && (
@@ -154,14 +218,18 @@ export const ClientsPage = () => {
                 Клиенты не найдены
               </p>
               <p className="mt-1 text-sm text-gray-500">
-                API и временные данные вернули пустой список клиентов.
+                В БД пока нет клиентов по доступным филиалам.
               </p>
             </div>
           )}
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {visibleClients.map((client) => (
-              <ClientCard key={client.id} client={client} />
+              <ClientCard
+                key={client.id}
+                client={client}
+                bookings={bookingsByClient.get(client.id) || []}
+              />
             ))}
           </div>
         </div>
