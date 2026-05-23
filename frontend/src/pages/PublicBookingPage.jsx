@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import {
     createPublicAppointment,
+    getGoogleOAuthUrl,
     getPublicBranches,
     getPublicEmployees,
     getPublicServices,
@@ -204,6 +205,41 @@ export const PublicBookingPage = () => {
         });
     };
 
+    const googleCalendarExportMutation = useMutation({
+        mutationFn: async () => {
+            const appointment = bookingMutation.data;
+            
+            return getGoogleOAuthUrl(appointment.google_calendar_export_url);
+        },
+
+        onSuccess: (data) => {
+            if (!data?.url) {
+                setFieldError((prev) => ({
+                    ...prev,
+                    submit: 'Google OAuth URL no exist',
+                }));
+
+                return;
+            }
+
+            window.location.href = data.url;
+        },
+
+        onError: (error) => {
+            setFieldError((prev) => ({
+                ...prev,
+                submit:
+                    error instanceof Error
+                        ? error.message
+                        : 'Google Calendar export error',
+            }));
+        },
+    });
+
+    const handleGoogleCalendarExport = () => {
+        googleCalendarExportMutation.mutate();
+    };
+
     if (bookingMutation.isSuccess) {
         const appointment = bookingMutation.data;
         const displaySlot = selectedSlot || {
@@ -237,6 +273,13 @@ export const PublicBookingPage = () => {
                         }}
                     >
                         Создать еще одну запись
+                    </Button>
+
+                    <Button
+                        className="mt-4"
+                        onClick={handleGoogleCalendarExport}
+                    >
+                        Выгрузить в Google Календарь
                     </Button>
                 </div>
             </div>
