@@ -142,3 +142,9 @@ swagger/
 node_modules/
 npm-debug.log
 yarn-error.log
+frontend/.vite/
+frontend/node_modules/
+frontend/dist/
+
+# Elastic / Logstash data (если локально)
+observability/elk/elastic-data/

@@ -1,0 +1,55 @@
+services:
+  elasticsearch:
+    image: elasticsearch:8.12.0
+    container_name: online_queue_elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - ./elastic-data:/usr/share/elasticsearch/data:Z
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://elasticsearch:9200/_cluster/health | grep -E -q '\"status\":\"(green|yellow)\"' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - online_queue_network
+
+  logstash:
+    image: logstash:8.12.0
+    container_name: online_queue_logstash
+    ports:
+      - "5044:5044"
+      - "5045:5045"
+      - "9600:9600"
+    volumes:
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf:Z
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - online_queue_network
+
+  kibana:
+    image: kibana:8.12.0
+    container_name: online_queue_kibana
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://kibana:5601/api/status || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks:
+      - online_queue_network
+
+networks:
+  online_queue_network:
+    external: true

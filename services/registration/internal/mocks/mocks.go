@@ -40,11 +40,11 @@ func NewPendingRepo() *PendingRepo {
 	}
 }
 
-func (r *PendingRepo) Save(_ context.Context, item pending.PendingRegistration) error {
+func (r *PendingRepo) Save(_ context.Context, item *pending.PendingRegistration) error {
 	if r.Err != nil {
 		return r.Err
 	}
-	r.Items[item.ID] = item
+	r.Items[item.ID] = *item
 	return nil
 }
 
@@ -68,7 +68,7 @@ func (r *PendingRepo) Delete(_ context.Context, registrationID string) error {
 	return nil
 }
 
-func (r *PendingRepo) GetAndValidate(_ context.Context, registrationID string, code string) (pending.PendingRegistration, error) {
+func (r *PendingRepo) GetAndValidate(_ context.Context, registrationID, code string) (pending.PendingRegistration, error) {
 	if r.Err != nil {
 		return pending.PendingRegistration{}, r.Err
 	}
@@ -147,9 +147,9 @@ func NewUserRepo() *UserRepo {
 	}
 }
 
-func (r *UserRepo) CreateUserWithBusiness(_ context.Context, item pending.PendingRegistration) error {
+func (r *UserRepo) CreateUserWithBusiness(_ context.Context, item *pending.PendingRegistration) error {
 	r.CreateCalls++
-	r.Created = append(r.Created, item)
+	r.Created = append(r.Created, *item)
 	if len(r.CreateErrors) == 0 {
 		return nil
 	}
@@ -159,19 +159,19 @@ func (r *UserRepo) CreateUserWithBusiness(_ context.Context, item pending.Pendin
 	return err
 }
 
-func (r *UserRepo) GetUserByEmail(_ context.Context, email string) (bool, error) {
+func (r *UserRepo) GetUserByEmail(_ context.Context, emailAddress string) (bool, error) {
 	if r.Err != nil {
 		return false, r.Err
 	}
-	return r.ExistingEmails[email], nil
+	return r.ExistingEmails[emailAddress], nil
 }
 
-func (r *UserRepo) UpdatePasswordByEmail(_ context.Context, email string, passwordHash string) (bool, error) {
+func (r *UserRepo) UpdatePasswordByEmail(_ context.Context, emailAddress, passwordHash string) (bool, error) {
 	if r.Err != nil {
 		return false, r.Err
 	}
-	r.UpdatedPasswords[email] = passwordHash
-	return r.UpdateResults[email], nil
+	r.UpdatedPasswords[emailAddress] = passwordHash
+	return r.UpdateResults[emailAddress], nil
 }
 
 func UniqueViolation(constraint string) error {

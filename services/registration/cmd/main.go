@@ -3,6 +3,7 @@ package main
 import (
 	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/logger"
+	"Online-queue-management-system/libs/tracing"
 	"Online-queue-management-system/services/registration/config"
 	"Online-queue-management-system/services/registration/internal/infrastructure/app"
 	"context"
@@ -13,6 +14,10 @@ import (
 )
 
 func main() {
+	os.Exit(runMain())
+}
+
+func runMain() int {
 	log := logger.New(logger.Config{
 		Level:  slog.LevelInfo,
 		JSON:   false,
@@ -22,16 +27,18 @@ func main() {
 	slog.SetDefault(log)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
 	ctx = logger.With(ctx, log)
+	shutdownTracing := tracing.InitFromEnv(ctx, "registration", log)
+	defer shutdownTracing()
 
 	if err := run(ctx); err != nil {
 		slog.Error("something went wrong while running registration service", "err", err)
-		stop()
-		os.Exit(1)
+		return 1
 	}
 
-	stop()
+	return 0
 }
 
 func run(ctx context.Context) error {
@@ -49,13 +56,13 @@ func run(ctx context.Context) error {
 		return err
 	}
 
-	app, err := app.NewApp(ctx, *cfg, *dbCfg)
+	registrationApp, err := app.NewApp(ctx, cfg, dbCfg)
 	if err != nil {
 		log.Error("error creating registration app", "err", err)
 		return err
 	}
 
-	if err := app.Run(ctx); err != nil {
+	if err := registrationApp.Run(ctx); err != nil {
 		log.Error("error starting registration service", "err", err)
 		return err
 	}

@@ -6,7 +6,7 @@ export const authApi = {
     me: () =>
         authorizationApi.get('/auth/me'),
     refresh: () =>
-        authorizationApi.post('/auth/refresh'),
+        authorizationApi.post('/auth/refresh', null, { skipAuthRefresh: true }),
     logout: () =>
         authorizationApi.post('/auth/logout'),
 };

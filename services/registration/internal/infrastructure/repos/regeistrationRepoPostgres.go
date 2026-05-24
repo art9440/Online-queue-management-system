@@ -21,19 +21,21 @@ func NewRegistrationRepoPostgres(dsn string) (*RegistrationRepoPostgres, error) 
 		return nil, err
 	}
 
-	if err = db.Ping(); err != nil {
+	if err := db.Ping(); err != nil {
 		return nil, err
 	}
 
 	return &RegistrationRepoPostgres{db: db}, nil
 }
 
-func (r *RegistrationRepoPostgres) CreateUserWithBusiness(ctx context.Context, p pending.PendingRegistration) error {
+func (r *RegistrationRepoPostgres) CreateUserWithBusiness(ctx context.Context, p *pending.PendingRegistration) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	// 1. создать бизнес
 	var businessID int64
@@ -89,7 +91,7 @@ func (r *RegistrationRepoPostgres) GetUserByEmail(ctx context.Context, email str
 	return exists, nil
 }
 
-func (r *RegistrationRepoPostgres) UpdatePasswordByEmail(ctx context.Context, email string, passwordHash string) (bool, error) {
+func (r *RegistrationRepoPostgres) UpdatePasswordByEmail(ctx context.Context, email, passwordHash string) (bool, error) {
 	result, err := r.db.ExecContext(ctx, `
 		UPDATE users
 		SET password_hash = $1

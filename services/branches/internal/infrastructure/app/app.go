@@ -1,9 +1,10 @@
 package app
 
 import (
-	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/auth"
+	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/logger"
+	"Online-queue-management-system/libs/metrics"
 	"Online-queue-management-system/libs/middleware"
 	branchesConfig "Online-queue-management-system/services/branches/config"
 	"Online-queue-management-system/services/branches/internal/application/service"
@@ -21,7 +22,7 @@ type BranchesApp struct {
 	httpServer *http.Server
 }
 
-func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg libconfig.DBConfig) (*BranchesApp, error) {
+func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg *libconfig.DBConfig) (*BranchesApp, error) {
 	log := logger.From(ctx)
 
 	repoPostgres, err := repos.NewBranchesRepoPostgres(dbCfg.DSN)
@@ -32,23 +33,44 @@ func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg libconfig.DBCo
 	svc := service.New(repoPostgres)
 
 	serverImpl := httpserver.NewHttpServer(svc)
-	log.Info("JWT secret", "secret", cfg.BranchesCfg.JWTAccessSecret)
 	parser := auth.NewTokenParser(cfg.BranchesCfg.JWTAccessSecret)
 	mux := http.NewServeMux()
 
 	authMiddleware := auth.Middleware(parser)
 
+	mux.Handle("GET /branches", authMiddleware(http.HandlerFunc(serverImpl.GetBranches)))
+	mux.Handle("GET /branches/{id}/clients", authMiddleware(http.HandlerFunc(serverImpl.GetBranchClients)))
+	mux.Handle("GET /branches/{id}/bookings", authMiddleware(http.HandlerFunc(serverImpl.GetBranchAppointments)))
 	mux.Handle("/branches", authMiddleware(http.HandlerFunc(serverImpl.GetBranches)))
+	mux.Handle("/branches/{id}/employees",
+		authMiddleware(http.HandlerFunc(serverImpl.GetBranchEmployees)))
+	mux.Handle("/services",
+		authMiddleware(http.HandlerFunc(serverImpl.GetServices)))
+	mux.Handle("/services/{serviceId}/branches",
+		authMiddleware(http.HandlerFunc(serverImpl.GetBranchesWithService)))
+	mux.Handle("/services/{serviceId}/branches/{branchId}/employees",
+		authMiddleware(http.HandlerFunc(serverImpl.GetEmployeesForService)))
+	mux.Handle("GET /businesses/{id}/registration-slug",
+		authMiddleware(http.HandlerFunc(serverImpl.GetBusinessRegistrationSlug)))
+
+	// Public endpoints - no authentication required
+	mux.Handle("/public/{registrationSlug}/services",
+		http.HandlerFunc(serverImpl.GetPublicServices))
+	mux.Handle("/public/{registrationSlug}/services/{serviceId}/branches",
+		http.HandlerFunc(serverImpl.GetPublicBranchesWithService))
+	mux.Handle("/public/{registrationSlug}/services/{serviceId}/branches/{branchId}/employees",
+		http.HandlerFunc(serverImpl.GetPublicEmployeesForService))
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
+	mux.Handle("/metrics", metrics.Handler())
 
 	CorsMux := middleware.CORSMiddleware(mux)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.BranchesCfg.BranchesPort,
-		Handler: middleware.RequestLogger(CorsMux),
+		Handler: middleware.TraceRequests(metrics.Middleware("branches")(middleware.RequestLogger(CorsMux))),
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
 		},

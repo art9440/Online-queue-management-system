@@ -14,14 +14,14 @@ func MustGet(ctx context.Context, key string) (string, error) {
 
 	val := os.Getenv(key)
 	if val == "" {
-		log.Error("env is required but not set", "key", key)
+		log.Error("required env is not set", "key", key)
 		return "", fmt.Errorf("env %s is required but not set", key)
 	}
 
 	return val, nil
 }
 
-func Get(ctx context.Context, key string, defaultVal string) string {
+func Get(ctx context.Context, key, defaultVal string) string {
 	log := logger.From(ctx)
 
 	val := os.Getenv(key)
@@ -44,7 +44,7 @@ func GetInt(ctx context.Context, key string) (int, error) {
 
 	i, err := strconv.Atoi(val)
 	if err != nil {
-		log.Error("env must be int", "key", key, "value", val)
+		log.Error("env must be int", "key", key, "value", val, "err", err)
 		return 0, err
 	}
 
@@ -61,7 +61,7 @@ func GetIntDefault(ctx context.Context, key string, defaultVal int) int {
 
 	i, err := strconv.Atoi(val)
 	if err != nil {
-		log.Error("env must be int", "key", key, "value", val)
+		log.Error("env must be int, using default value", "key", key, "value", val, "default", defaultVal, "err", err)
 		return defaultVal
 	}
 
@@ -79,7 +79,7 @@ func GetDuration(ctx context.Context, key string) (time.Duration, error) {
 
 	d, err := time.ParseDuration(val)
 	if err != nil {
-		log.Error("env must be duration", "key", key, "value", val)
+		log.Error("env must be duration", "key", key, "value", val, "err", err)
 		return 0, err
 	}
 

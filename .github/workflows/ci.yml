@@ -202,7 +202,7 @@ jobs:
           SMTP_PASSWORD=test
           SMTP_FROM=test@example.com
           EOF
-
+          
       - name: Create CI env file for frontend
         run: |
           cat > frontend/cypress.env.json <<EOF

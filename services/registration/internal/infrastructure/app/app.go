@@ -4,6 +4,7 @@ import (
 	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/email"
 	"Online-queue-management-system/libs/logger"
+	"Online-queue-management-system/libs/metrics"
 	"Online-queue-management-system/libs/middleware"
 	"Online-queue-management-system/libs/redisclient"
 	"Online-queue-management-system/services/registration/config"
@@ -13,6 +14,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 )
@@ -23,9 +25,13 @@ type App struct {
 	emailQueue *email.EmailQueue
 }
 
-func NewApp(ctx context.Context, cfg config.Config, dbCfg libconfig.DBConfig) (*App, error) {
+func NewApp(ctx context.Context, cfg *config.Config, dbCfg *libconfig.DBConfig) (*App, error) {
 	log := logger.From(ctx)
 	redisClient, err := redisclient.New(ctx, cfg.RedisCfg, 5*time.Second)
+	if err != nil {
+		log.Error("error creating redis client", "err", err)
+		return nil, err
+	}
 
 	if err := redisclient.WaitForRedis(ctx, redisClient); err != nil {
 		log.Error("redis not ready", "err", err)
@@ -53,16 +59,20 @@ func NewApp(ctx context.Context, cfg config.Config, dbCfg libconfig.DBConfig) (*
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	//для теста
+	mux.Handle("/metrics", metrics.Handler())
+	// для теста
 	mux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("pong"))
+		_, _ = w.Write([]byte("pong"))
 	})
 
 	handler := middleware.CORSMiddleware(mux)
 
 	httpServer := &http.Server{
 		Addr:    ":" + cfg.RegCfg.RegistrationPort,
-		Handler: handler,
+		Handler: middleware.TraceRequests(metrics.Middleware("registration")(middleware.RequestLogger(handler))),
+		BaseContext: func(_ net.Listener) context.Context {
+			return ctx
+		},
 	}
 
 	return &App{svc: svc,
@@ -115,8 +125,8 @@ func (a *App) Run(ctx context.Context) error {
 	log.Info("http server stopped")
 
 	log.Info("shutting down email queue", "pending_emails", func() int {
-		len, _, _ := a.emailQueue.GetStats()
-		return len
+		queueLen, _, _ := a.emailQueue.GetStats()
+		return queueLen
 	}())
 
 	a.emailQueue.Shutdown()

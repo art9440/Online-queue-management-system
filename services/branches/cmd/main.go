@@ -3,6 +3,7 @@ package main
 import (
 	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/logger"
+	"Online-queue-management-system/libs/tracing"
 	branchesConfig "Online-queue-management-system/services/branches/config"
 	"Online-queue-management-system/services/branches/internal/infrastructure/app"
 	"context"
@@ -13,6 +14,10 @@ import (
 )
 
 func main() {
+	os.Exit(runMain())
+}
+
+func runMain() int {
 	log := logger.New(logger.Config{
 		Level:  slog.LevelInfo,
 		JSON:   false,
@@ -22,16 +27,18 @@ func main() {
 	slog.SetDefault(log)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
 	ctx = logger.With(ctx, log)
+	shutdownTracing := tracing.InitFromEnv(ctx, "branches", log)
+	defer shutdownTracing()
 
 	if err := run(ctx); err != nil {
 		slog.Error("something went wrong while running branches service", "err", err)
-		stop()
-		os.Exit(1)
+		return 1
 	}
 
-	stop()
+	return 0
 }
 
 func run(ctx context.Context) error {
@@ -48,13 +55,13 @@ func run(ctx context.Context) error {
 		return err
 	}
 
-	app, err := app.NewApp(ctx, *cfg, *dbCfg)
+	branchesApp, err := app.NewApp(ctx, *cfg, dbCfg)
 	if err != nil {
 		log.Error("error creating branches app", "err", err)
 		return err
 	}
 
-	if err := app.Run(ctx); err != nil {
+	if err := branchesApp.Run(ctx); err != nil {
 		log.Error("error starting branches service", "err", err)
 		return err
 	}

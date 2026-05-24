@@ -3,6 +3,7 @@ package app
 import (
 	"Online-queue-management-system/libs/auth"
 	"Online-queue-management-system/libs/logger"
+	"Online-queue-management-system/libs/metrics"
 	"Online-queue-management-system/libs/middleware"
 	"Online-queue-management-system/libs/redisclient"
 	"context"
@@ -37,13 +38,13 @@ func New(ctx context.Context) (*App, error) {
 		return nil, err
 	}
 
-	db, err := newPostgres(ctx, cfg)
+	db, err := newPostgres(ctx, &cfg)
 	if err != nil {
 		log.Error("failed to connect postgres", "err", err)
 		return nil, err
 	}
 
-	rdb, err := newRedis(ctx, cfg)
+	rdb, err := newRedis(ctx, &cfg)
 	if err != nil {
 		log.Error("failed to connect redis", "err", err)
 		db.Close()
@@ -61,7 +62,6 @@ func New(ctx context.Context) (*App, error) {
 
 	authService := service.New(userRepo, sessionRepo, tokenManager)
 	cookieManager := httpapi.NewCookieManager(cfg.CookieSecure)
-	log.Info("JWT secret", "secret", cfg.JWTAccessSecret)
 	parser := auth.NewTokenParser(cfg.JWTAccessSecret)
 	handler := httpapi.NewHandler(authService, parser, cookieManager, cfg.AccessTTL, cfg.RefreshTTL)
 
@@ -71,12 +71,13 @@ func New(ctx context.Context) (*App, error) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
+	mux.Handle("/metrics", metrics.Handler())
 
 	CorsMux := middleware.CORSMiddleware(mux)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.AuthPort,
-		Handler: middleware.RequestLogger(CorsMux),
+		Handler: middleware.TraceRequests(metrics.Middleware("auth")(middleware.RequestLogger(CorsMux))),
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
 		},
@@ -128,7 +129,7 @@ func (a *App) Close() {
 	}
 }
 
-func newPostgres(ctx context.Context, cfg config.Config) (*pgxpool.Pool, error) {
+func newPostgres(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
 	pool, err := pgxpool.New(ctx, cfg.DBCfg.DSN)
 	if err != nil {
 		return nil, err
@@ -145,7 +146,7 @@ func newPostgres(ctx context.Context, cfg config.Config) (*pgxpool.Pool, error) 
 	return pool, nil
 }
 
-func newRedis(ctx context.Context, cfg config.Config) (*goredis.Client, error) {
+func newRedis(ctx context.Context, cfg *config.Config) (*goredis.Client, error) {
 	return redisclient.New(ctx, libconfig.RedisConfig{
 		RedisAddr:     cfg.RedisAddr,
 		RedisPassword: cfg.RedisPassword,

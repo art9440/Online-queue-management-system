@@ -7,10 +7,10 @@ import (
 )
 
 type PendingRepo interface {
-	Save(ctx context.Context, pending pending.PendingRegistration) error
+	Save(ctx context.Context, pending *pending.PendingRegistration) error
 	Get(ctx context.Context, registrationID string) (pending.PendingRegistration, error)
 	Delete(ctx context.Context, registrationID string) error
-	GetAndValidate(ctx context.Context, id string, code string) (pending.PendingRegistration, error)
+	GetAndValidate(ctx context.Context, id, code string) (pending.PendingRegistration, error)
 }
 
 type RecoveryRepo interface {
@@ -20,7 +20,7 @@ type RecoveryRepo interface {
 }
 
 type UserRepo interface {
-	CreateUserWithBusiness(ctx context.Context, p pending.PendingRegistration) error
+	CreateUserWithBusiness(ctx context.Context, p *pending.PendingRegistration) error
 	GetUserByEmail(ctx context.Context, email string) (bool, error)
-	UpdatePasswordByEmail(ctx context.Context, email string, passwordHash string) (bool, error)
+	UpdatePasswordByEmail(ctx context.Context, email, passwordHash string) (bool, error)
 }
