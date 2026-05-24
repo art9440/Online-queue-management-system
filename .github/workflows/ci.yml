@@ -187,6 +187,12 @@ jobs:
           POSTGRES_HOST=postgres
           POSTGRES_PORT=5432
 
+          DB_HOST=postgres
+          DB_PORT=5432
+          DB_NAME=online_queue_db
+          DB_USER=postgres
+          DB_PASSWORD=postgres
+
           REDIS_HOST=redis
           REDIS_PORT=6379
           REDIS_PASSWORD=redis_password
