@@ -196,11 +196,19 @@ jobs:
           REDIS_HOST=redis
           REDIS_PORT=6379
           REDIS_PASSWORD=redis_password
+          REDIS_ADDR=redis:6379
 
           JWT_ACCESS_SECRET=test_access_secret
           JWT_REFRESH_SECRET=test_refresh_secret
 
           COOKIE_SECURE=false
+
+          AUTH_PORT=8082
+          REGISTRATION_PORT=8081
+          BRANCHES_PORT=8083
+          BOOKING_PORT=8084
+          BOT_PORT=8085
+          SCHEDULER_PORT=8086
 
           SMTP_HOST=localhost
           SMTP_PORT=1025
