@@ -221,10 +221,18 @@ jobs:
       - name: Create Docker network
         run: |
           docker network inspect online_queue_network >/dev/null 2>&1 || docker network create online_queue_network
-          
+
       - name: Start services
         run: |
-          docker compose up -d --build
+           docker compose up -d --build postgres redis
+           docker compose run --rm migrate
+           docker compose up -d auth registration branches booking bot scheduler
+
+      - name: Show docker logs
+        if: always()
+        run: |
+            docker compose ps
+            docker compose logs migrate
 
       - name: Wait for registration service
         run: |
