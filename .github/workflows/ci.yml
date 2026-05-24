@@ -184,8 +184,6 @@ jobs:
           POSTGRES_USER=postgres
           POSTGRES_PASSWORD=postgres
           POSTGRES_DB=online_queue_db
-          POSTGRES_HOST=postgres
-          POSTGRES_PORT=5432
 
           DB_HOST=postgres
           DB_PORT=5432
@@ -193,13 +191,15 @@ jobs:
           DB_USER=postgres
           DB_PASSWORD=postgres
 
-          REDIS_HOST=redis
-          REDIS_PORT=6379
           REDIS_PASSWORD=redis_password
           REDIS_ADDR=redis:6379
+          REDIS_DB=0
 
           JWT_ACCESS_SECRET=test_access_secret
           JWT_REFRESH_SECRET=test_refresh_secret
+          ACCESS_TOKEN_TTL=15m
+          REFRESH_TOKEN_TTL=168h
+
 
           COOKIE_SECURE=false
 
