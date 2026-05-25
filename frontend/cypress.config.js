@@ -8,7 +8,7 @@ module.exports = defineConfig({
     setupNodeEvents(on, config) {
       const pool = new Pool({
         host: config.env.DB_HOST,
-        port: parseInt(config.env.DB_PORT, 10),
+        port: Number.parseInt(config.env.DB_PORT, 10),
         database: config.env.DB_NAME,
         user: config.env.DB_USER,
         password: config.env.DB_PASSWORD,
@@ -127,8 +127,8 @@ module.exports = defineConfig({
           const user = res.rows[0] || null;
 
           if (user) {
-            user.id = parseInt(user.id, 10);
-            user.business_id = parseInt(user.business_id, 10);
+            user.id = Number.parseInt(user.id, 10);
+            user.business_id = Number.parseInt(user.business_id, 10);
           }
 
           return user;
@@ -140,7 +140,7 @@ module.exports = defineConfig({
             ["admin@test.com"]
           );
 
-          return parseInt(res.rows[0].count, 10);
+          return Number.parseInt(res.rows[0].count, 10);
         },
 
         "db:findBusinessByName": async (name) => {
