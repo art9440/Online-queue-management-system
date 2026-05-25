@@ -7,11 +7,11 @@ module.exports = defineConfig({
 
     setupNodeEvents(on, config) {
       const pool = new Pool({
-        host: config.env.DB_HOST,
-        port: Number.parseInt(config.env.DB_PORT, 10),
-        database: config.env.DB_NAME,
-        user: config.env.DB_USER,
-        password: config.env.DB_PASSWORD,
+        host: String(config.env.DB_HOST || "localhost"),
+        port: Number.parseInt(String(config.env.DB_PORT || "5432"), 10),
+        database: String(config.env.DB_NAME || "online_queue_db"),
+        user: String(config.env.DB_USER || "postgres"),
+        password: String(config.env.DB_PASSWORD || "postgres"),
       });
 
       on("task", {
