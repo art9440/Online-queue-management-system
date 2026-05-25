@@ -256,7 +256,7 @@ jobs:
             "API_AUTH": "http://localhost:8082",
             "API_BASE": "http://localhost:5173",
 
-            "DB_HOST": "postgres",
+            "DB_HOST": "localhost",
             "DB_PORT": 5432,
             "DB_NAME": "online_queue_db",
             "DB_USER": "postgres",
