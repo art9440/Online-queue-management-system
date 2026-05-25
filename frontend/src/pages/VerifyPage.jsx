@@ -19,7 +19,7 @@ export const VerifyPage = () => {
     const email = location.state?.email || "ваш email";
 
     const [fieldError, setFieldError] = useState({});
-    const [codeDigits, setCodeDigits] = useState(Array(CODE_LENGTH).fill(""));
+    const [codeDigits, setCodeDigits] = useState(new Array(CODE_LENGTH).fill(""));
     const [resendTimer, setResendTimer] = useState(0);
 
     const inputRefs = useRef([]);
@@ -151,6 +151,13 @@ export const VerifyPage = () => {
     const isPending = verifyMutation.isPending || resendMutation.isPending;
     const submitError = fieldError.submit;
 
+    let resendText = "Отправить код еще раз";
+    if (resendTimer > 0){
+        resendText = `Отправить повторно ${resendTimer} сек`;
+    } else if (resendMutation.isPending){
+        resendText = "Отправка...";
+    }
+
     if (!registrationId && !email) {
         return (
         <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
@@ -188,9 +195,9 @@ export const VerifyPage = () => {
         )}
 
         <form onSubmit={handleSubmit} noValidate>
-          <label className="block text-gray-700 text-sm font-medium mb-3 text-center">
+          <p className="block text-gray-700 text-sm font-medium mb-3 text-center">
             Введите код из письма
-          </label>
+          </p>
           
           <div 
             className="flex justify-center gap-2 mb-6"
@@ -198,7 +205,7 @@ export const VerifyPage = () => {
           >
             {codeDigits.map((digit, index) => (
               <input
-                key={index}
+                key={`verify-digit-${index}`}
                 ref={(el) => (inputRefs.current[index] = el)}
                 type="text"
                 inputMode="numeric"
@@ -249,9 +256,7 @@ export const VerifyPage = () => {
                 : "text-indigo-600 hover:text-indigo-700 hover:underline"
             }`}
           >
-            {resendTimer > 0 
-              ? `Отправить повторно через ${resendTimer} сек` 
-              : (resendMutation.isPending ? "Отправка..." : "Отправить код ещё раз")}
+            {resendText}
           </button>
         </div>
 
