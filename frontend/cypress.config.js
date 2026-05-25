@@ -6,14 +6,22 @@ module.exports = defineConfig({
     baseUrl: "http://localhost:5173",
 
     setupNodeEvents(on, config) {
-      const pool = new Pool({
+      const dbConfig = {
         host: String(config.env.DB_HOST || "localhost"),
         port: Number.parseInt(String(config.env.DB_PORT || "5432"), 10),
         database: String(config.env.DB_NAME || "online_queue_db"),
         user: String(config.env.DB_USER || "postgres"),
-        password: String(config.env.DB_PASSWORD || "postgres"),
-      });
+        password: String(config.env.DB_PASSWORD || ""),
+      };
 
+      if (!dbConfig.password) {
+        throw new Error(
+          "DB_PASSWORD is empty. Set DB_PASSWORD in frontend/cypress.env.json"
+        );
+      }
+
+      const pool = new Pool(dbConfig);
+      
       on("task", {
         "db:clean": async () => {
           await pool.query("DELETE FROM appointments");
