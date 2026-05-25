@@ -95,28 +95,54 @@ jobs:
           POSTGRES_USER=postgres
           POSTGRES_PASSWORD=postgres
           POSTGRES_DB=online_queue_db
-          POSTGRES_HOST=postgres
-          POSTGRES_PORT=5432
 
-          REDIS_HOST=redis
-          REDIS_PORT=6379
+          DB_HOST=postgres
+          DB_PORT=5432
+          DB_NAME=online_queue_db
+          DB_USER=postgres
+          DB_PASSWORD=postgres
+
           REDIS_PASSWORD=redis_password
+          REDIS_ADDR=redis:6379
+          REDIS_DB=0
 
           JWT_ACCESS_SECRET=test_access_secret
           JWT_REFRESH_SECRET=test_refresh_secret
+          ACCESS_TOKEN_TTL=15m
+          REFRESH_TOKEN_TTL=168h
 
           COOKIE_SECURE=false
 
+          AUTH_PORT=8082
+          REGISTRATION_PORT=8081
+          BRANCHES_PORT=8083
+          BOOKING_PORT=8084
+          BOT_PORT=8085
+          SCHEDULER_PORT=8086
+
           SMTP_HOST=localhost
           SMTP_PORT=1025
-          SMTP_USERNAME=test
+          SMTP_USER=test
           SMTP_PASSWORD=test
+          SMTP_PASS=test
           SMTP_FROM=test@example.com
           EOF
 
+      - name: Create Docker network
+        run: |
+          docker network inspect online_queue_network >/dev/null 2>&1 || docker network create online_queue_network
+
       - name: Start services
         run: |
-          docker compose up -d --build
+          docker compose up -d --build postgres redis
+          docker compose run --rm migrate
+          docker compose up -d auth registration branches booking bot scheduler
+
+      - name: Show docker logs
+        if: always()
+        run: |
+          docker compose ps
+          docker compose logs migrate
 
       - name: Wait for registration service
         run: |
@@ -130,6 +156,38 @@ jobs:
           done
 
           echo "Registration service is not ready"
+          docker compose ps
+          docker compose logs
+          exit 1
+
+      - name: Wait for auth service
+        run: |
+          for i in {1..20}; do
+            if curl -fsS http://localhost:8082/health; then
+              exit 0
+            fi
+
+            echo "Waiting for auth service..."
+            sleep 2
+          done
+
+          echo "Auth service is not ready"
+          docker compose ps
+          docker compose logs
+          exit 1
+
+      - name: Wait for booking service
+        run: |
+          for i in {1..20}; do
+            if curl -fsS http://localhost:8084/health; then
+              exit 0
+            fi
+
+            echo "Waiting for booking service..."
+            sleep 2
+          done
+
+          echo "Booking service is not ready"
           docker compose ps
           docker compose logs
           exit 1
