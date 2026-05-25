@@ -6,6 +6,15 @@ import { Button } from "../components/ui/Button";
 import { useAuth } from "../context/AuthContext";
 const CODE_LENGTH = 6;
 
+const CODE_INPUTS = [
+  { key: "first-digit", index: 0 },
+  { key: "second-digit", index: 1 },
+  { key: "third-digit", index: 2 },
+  { key: "fourth-digit", index: 3 },
+  { key: "fifth-digit", index: 4 },
+  { key: "sixth-digit", index: 5 },
+];
+
 export const VerifyPage = () => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -203,15 +212,15 @@ export const VerifyPage = () => {
             className="flex justify-center gap-2 mb-6"
             onPaste={handlePaste}
           >
-            {codeDigits.map((digit, index) => (
-              <input
+            {CODE_INPUTS.map(({key, index}) => (
+                <input
                 key={`verify-digit-${index}`}
                 ref={(el) => (inputRefs.current[index] = el)}
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
                 maxLength={1}
-                value={digit}
+                value={codeDigits[index]}
                 onChange={(e) => handleChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 disabled={isPending}
@@ -226,7 +235,9 @@ export const VerifyPage = () => {
                   ${isPending ? "opacity-50 cursor-not-allowed" : ""}
                 `}
               />
-            ))}
+            )
+            )}
+              
           </div>
 
           {fieldError.code && (
