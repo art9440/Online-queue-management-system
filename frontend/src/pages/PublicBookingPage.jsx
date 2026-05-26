@@ -44,11 +44,12 @@ const formatSlot = (slot, fallbackTimezone = "Asia/Novosibirsk") => {
     return `${formatter.format(new Date(slot.start_time))} - ${formatter.format(new Date(slot.end_time))}`;
 };
 
-const OptionButton = ({ active, title, subtitle, onClick }) => {
+const OptionButton = ({ active, title, subtitle, onClick, dataCy }) => {
     return (
         <button
             type="button"
             onClick={onClick}
+            data-cy={dataCy}
             className={`w-full text-left p-4 rounded-lg border transition ${
                 active
                     ? "border-blue-500 bg-blue-50"
@@ -64,6 +65,7 @@ const OptionButton = ({ active, title, subtitle, onClick }) => {
 const BackButton = ({ onClick }) => {
     return (
         <button
+            data-cy="back-button"
             type="button"
             onClick={onClick}
             className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
@@ -171,12 +173,32 @@ export const PublicBookingPage = () => {
         }
     };
 
+    const isValidPhone = (phone) => {
+        const phoneRegex = /^(\+7|7|8)?[\s\-]?\(?[489][0-9]{2}\)?[\s\-]?[0-9]{3}[\s\-]?[0-9]{2}[\s\-]?[0-9]{2}$/;
+        const digitsOnly = phone.replace(/\D/g, '');
+        return digitsOnly.length === 11 && phoneRegex.test(phone);
+    };
+
+    const isValidEmail = (email) => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+};
+
     const validateClient = () => {
         const errors = {};
 
         if (!client.name.trim()) errors.name = "Введите имя";
         if (!client.surname.trim()) errors.surname = "Введите фамилию";
-        if (!client.phone.trim()) errors.phone = "Введите телефон";
+
+        if (!client.phone.trim()) { 
+            errors.phone = "Введите телефон";
+        } else if (!isValidPhone(client.phone)) {
+            errors.phone = "Неверный формат телефона";
+        }
+
+        if (client.email && client.email.trim() && !isValidEmail(client.email)) {
+            errors.email = "Неверный формат email";
+        }
 
         setFieldError(errors);
         return Object.keys(errors).length === 0;
@@ -276,6 +298,7 @@ export const PublicBookingPage = () => {
                     </Button>
 
                     <Button
+                        data-cy="google-calendar-button"
                         className="mt-4"
                         onClick={handleGoogleCalendarExport}
                     >
@@ -320,6 +343,7 @@ export const PublicBookingPage = () => {
 
                         {servicesQuery.data?.map((service) => (
                             <OptionButton
+                                dataCy="service-option-button"
                                 key={service.id}
                                 active={String(service.id) === String(serviceId)}
                                 title={service.name}
@@ -331,7 +355,8 @@ export const PublicBookingPage = () => {
                             />
                         ))}
 
-                        <Button
+                        <Button 
+                            data-cy="go-to-branch-button"
                             className="mt-5"
                             loading={false}
                             onClick={() => serviceId && setStep("branch")}
@@ -351,6 +376,7 @@ export const PublicBookingPage = () => {
 
                         {branchesQuery.data?.map((branch) => (
                             <OptionButton
+                                dataCy="branch-option-button"
                                 key={branch.id}
                                 active={String(branch.id) === String(branchId)}
                                 title={branch.name}
@@ -364,7 +390,9 @@ export const PublicBookingPage = () => {
 
                         <div className="flex items-center gap-3 mt-5">
                             <div className="w-28"><BackButton onClick={goBack} /></div>
-                            <Button onClick={() => branchId && setStep("employee")}>
+                            <Button 
+                                data-cy="go-to-master-button"
+                                onClick={() => branchId && setStep("employee")}>
                                 Выбрать мастера
                             </Button>
                         </div>
@@ -381,6 +409,7 @@ export const PublicBookingPage = () => {
 
                         {employeesQuery.data?.map((employee) => (
                             <OptionButton
+                                dataCy="master-option-button"
                                 key={employee.id}
                                 active={String(employee.id) === String(employeeId)}
                                 title={`${employee.name} ${employee.surname}`}
@@ -394,7 +423,9 @@ export const PublicBookingPage = () => {
 
                         <div className="flex items-center gap-3 mt-5">
                             <div className="w-28"><BackButton onClick={goBack} /></div>
-                            <Button onClick={() => employeeId && setStep("time")}>
+                            <Button 
+                                data-cy="go-to-time-button"
+                                onClick={() => employeeId && setStep("time")}>
                                 Выбрать дату
                             </Button>
                         </div>
@@ -404,6 +435,7 @@ export const PublicBookingPage = () => {
                 {step === "time" && (
                     <div>
                         <Input
+                            data-cy="date-input"
                             label="Дата"
                             type="date"
                             name="date"
@@ -435,6 +467,7 @@ export const PublicBookingPage = () => {
                                 <div className="grid grid-cols-2 gap-3">
                                     {slotsQuery.data.map((slot) => (
                                         <button
+                                            data-cy="time-select-button"
                                             key={slot.start_time}
                                             type="button"
                                             onClick={() => setSelectedSlot(slot)}
@@ -453,7 +486,9 @@ export const PublicBookingPage = () => {
 
                         <div className="flex items-center gap-3 mt-5">
                             <div className="w-28"><BackButton onClick={goBack} /></div>
-                            <Button onClick={() => selectedSlot && setStep("client")}>
+                            <Button 
+                                data-cy="go-to-data-button"
+                                onClick={() => selectedSlot && setStep("client")}>
                                 Ввести данные
                             </Button>
                         </div>
@@ -463,6 +498,7 @@ export const PublicBookingPage = () => {
                 {step === "client" && (
                     <form onSubmit={handleSubmit} noValidate>
                         <Input
+                            data-cy="data-name-input"
                             label="Имя"
                             name="name"
                             value={client.name}
@@ -472,6 +508,7 @@ export const PublicBookingPage = () => {
                         />
 
                         <Input
+                            data-cy="data-surname-input"
                             label="Фамилия"
                             name="surname"
                             value={client.surname}
@@ -481,6 +518,7 @@ export const PublicBookingPage = () => {
                         />
 
                         <Input
+                            data-cy="data-phone-input"
                             label="Телефон"
                             name="phone"
                             value={client.phone}
@@ -490,6 +528,7 @@ export const PublicBookingPage = () => {
                         />
 
                         <Input
+                            data-cy="data-email-input"
                             label="Email"
                             type="email"
                             name="email"
@@ -497,9 +536,11 @@ export const PublicBookingPage = () => {
                             onChange={handleClientChange}
                             placeholder="email@example.com"
                             required={false}
+                            error={fieldError.email}
                         />
 
                         <Input
+                            data-cy="data-telegram-input"
                             label="Telegram"
                             name="tg_username"
                             value={client.tg_username}
@@ -509,6 +550,7 @@ export const PublicBookingPage = () => {
                         />
 
                         <Input
+                            data-cy="data-comment-input"
                             label="Комментарий"
                             name="comment"
                             value={client.comment}
@@ -519,7 +561,9 @@ export const PublicBookingPage = () => {
 
                         <div className="flex items-center gap-3 mt-5">
                             <div className="w-28"><BackButton onClick={goBack} /></div>
-                            <Button type="submit" loading={bookingMutation.isPending}>
+                            <Button
+                                data-cy="confirm-booking-button" 
+                                type="submit" loading={bookingMutation.isPending}>
                                 Записаться
                             </Button>
                         </div>
