@@ -61,7 +61,7 @@ const BranchOverviewCard = ({
 }) => {
   const todayBookings = bookings;
   const registrationLink =
-    globalThis.window === "undefined"
+    globalThis.window == "undefined"
       ? `/register?branch_id=${branch.id}`
       : `${globalThis.window.location.origin}/register?branch_id=${branch.id}`;
   const revenue = todayBookings.reduce(

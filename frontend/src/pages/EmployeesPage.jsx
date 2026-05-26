@@ -256,13 +256,6 @@ export const EmployeesPage = () => {
     isServicesError ||
     serviceEmployeeQueries.some((query) => query.isError);
 
-  const handleEmployeeRowKeyDown = (event, employee) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      setSelectedEmployee(employee);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.14),transparent_32rem),linear-gradient(135deg,#f8fbff_0%,#eef6ff_48%,#f7fbf4_100%)]">
       <Sidebar
@@ -355,11 +348,7 @@ export const EmployeesPage = () => {
                     return (
                       <tr
                         key={employee.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => setSelectedEmployee(employee)}
-                        onKeyDown={(event) => handleEmployeeRowKeyDown(event, employee)}
-                        className="cursor-pointer hover:bg-indigo-50/40"
+                        className="hover:bg-indigo-50/40"
                       >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
@@ -384,7 +373,17 @@ export const EmployeesPage = () => {
                           {employee.branchName}
                         </td>
                         <td className="px-4 py-3 text-gray-600">
-                          {employee.position || "Сотрудник"}
+                          <div className="flex items-center justify-between gap-3">
+                            <span>{employee.position || "Сотрудник"}</span>
+
+                            <button
+                              type="button"
+                              onClick={() => setSelectedEmployee(employee)}
+                              className="rounded-lg border border-indigo-200 px-3 py-1 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50"
+                            >
+                              Услуги
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
