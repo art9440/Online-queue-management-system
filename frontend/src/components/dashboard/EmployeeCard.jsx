@@ -28,7 +28,7 @@ export const EmployeeCard = ({ employee, branchName, onClick }) => {
         <div
           className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white ${getAvatarColor(employee)}`}
         >
-          {initials ? initials : <UserRound size={18} />}
+          {initials || <UserRound size={18} />}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">

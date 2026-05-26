@@ -19,7 +19,7 @@ const DEMO_BOOKING_SLUG = "demo-business";
 
 const getPublicBookingLink = (slug) => {
   if (!slug) return "";
-  if (typeof window === "undefined") return `/public/${slug}`;
+  if (globalThis.window === "undefined") return `/public/${slug}`;
   return `${globalThis.window.location.origin}/public/${slug}`;
 };
 
@@ -101,6 +101,7 @@ const BookingLinkModal = ({ bookingLink, isDemoLink, onClose }) => {
 
 BookingLinkModal.propTypes = {
   bookingLink: PropTypes.string.isRequired,
+  isDemoLink: PropTypes.bool,
   onClose: PropTypes.func.isRequired,
 };
 

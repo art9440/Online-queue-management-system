@@ -61,7 +61,7 @@ const BranchOverviewCard = ({
 }) => {
   const todayBookings = bookings;
   const registrationLink =
-    typeof globalThis.window === "undefined"
+    globalThis.window === "undefined"
       ? `/register?branch_id=${branch.id}`
       : `${globalThis.window.location.origin}/register?branch_id=${branch.id}`;
   const revenue = todayBookings.reduce(
@@ -69,19 +69,8 @@ const BranchOverviewCard = ({
     0
   );
 
-  const handleCardKeyDown = (event) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      onOpen();
-    }
-  };
-
   return (
     <article
-      role="button"
-      tabIndex={0}
-      onClick={onOpen}
-      onKeyDown={handleCardKeyDown}
       className="group cursor-pointer overflow-hidden rounded-2xl border border-indigo-100 bg-white p-5 shadow-lg shadow-indigo-100/40 transition-all hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-xl hover:shadow-indigo-200/70 focus:outline-none focus:ring-2 focus:ring-indigo-300"
     >
       <div className="-mx-5 -mt-5 mb-5 h-2 bg-indigo-600" />
@@ -139,6 +128,13 @@ const BranchOverviewCard = ({
           <ExternalLink size={14} className="shrink-0" />
         </a>
       </div>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="mt-4 w-full rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
+      >
+        Открыть расписание
+      </button>
     </article>
   );
 };

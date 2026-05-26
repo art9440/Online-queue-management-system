@@ -308,6 +308,7 @@ export const EmployeesPage = () => {
             </div>
 
             <label className="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 sm:max-w-xs">
+              <span className="sr-only">Поиск сотрудника</span>
               <Search size={16} className="text-gray-400" />
               <input
                 type="search"
