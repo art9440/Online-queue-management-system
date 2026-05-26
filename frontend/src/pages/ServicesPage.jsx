@@ -8,7 +8,7 @@ import { Sidebar } from "../components/layouts/Sidebar";
 import { useAuth } from "../context/AuthContext";
 import { groupServicesForDisplay } from "../mocks/serviceGroups";
 
-const getIsManagerPath = () => window.location.pathname.startsWith("/manager");
+const getIsManagerPath = () => globalThis.window.location.pathname.startsWith("/manager");
 
 const normalizeService = (service) => ({
   id: service.id,

@@ -1,4 +1,5 @@
 import { CalendarDays, Clock, Phone, Sparkles, User } from "lucide-react";
+import PropTypes from "prop-types";
 
 const getClientName = (client) =>
   [client.surname, client.name].filter(Boolean).join(" ") || client.name;
@@ -105,4 +106,24 @@ export const ClientCard = ({ client, bookings = [] }) => {
       )}
     </article>
   );
+};
+
+ClientCard.propTypes = {
+  client: PropTypes.shape({
+    name: PropTypes.string,
+    surname: PropTypes.string,
+    phone: PropTypes.string,
+    email: PropTypes.string,
+    branchName: PropTypes.string,
+    isNew: PropTypes.bool,
+    comment: PropTypes.string,
+  }),
+  bookings: PropTypes.arrayOf(
+    PropTypes.shape({
+      start_time: PropTypes.string,
+      end_time: PropTypes.string,
+      service_name: PropTypes.string,
+      employeeName: PropTypes.string,
+    })
+  ),
 };

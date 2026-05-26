@@ -12,6 +12,7 @@ import { Sidebar } from "../components/layouts/Sidebar";
 import { EMPLOYEE_AVATAR_COLORS } from "../constants/schedule";
 import { useAuth } from "../context/AuthContext";
 import { employeeMatchesSearch } from "../mocks/employeeSearch";
+import PropTypes from "prop-types";
 
 const normalizeBranch = (branch) => ({
   id: branch.id,
@@ -19,7 +20,7 @@ const normalizeBranch = (branch) => ({
   address: branch.address,
 });
 
-const getIsManagerPath = () => window.location.pathname.startsWith("/manager");
+const getIsManagerPath = () => globalThis.window.location.pathname.startsWith("/manager");
 
 const normalizeEmployee = (employee, branch) => ({
   id: employee.id,
@@ -148,6 +149,27 @@ const EmployeeServicesModal = ({
   );
 };
 
+EmployeeServicesModal.propTypes = {
+  employee: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    branchName: PropTypes.string,
+    name: PropTypes.string,
+    surname: PropTypes.string,
+    position: PropTypes.string,
+  }),
+  services: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+      name: PropTypes.string,
+      duration_minutes: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+      price: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    })
+  ).isRequired,
+  isLoading: PropTypes.bool.isRequired,
+  isError: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+};
+
 export const EmployeesPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -233,6 +255,13 @@ export const EmployeesPage = () => {
   const isEmployeeServicesError =
     isServicesError ||
     serviceEmployeeQueries.some((query) => query.isError);
+
+  const handleEmployeeRowKeyDown = (event, employee) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      setSelectedEmployee(employee);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.14),transparent_32rem),linear-gradient(135deg,#f8fbff_0%,#eef6ff_48%,#f7fbf4_100%)]">
@@ -325,7 +354,10 @@ export const EmployeesPage = () => {
                     return (
                       <tr
                         key={employee.id}
+                        role="button"
+                        tabIndex={0}
                         onClick={() => setSelectedEmployee(employee)}
+                        onKeyDown={(event) => handleEmployeeRowKeyDown(event, employee)}
                         className="cursor-pointer hover:bg-indigo-50/40"
                       >
                         <td className="px-4 py-3">

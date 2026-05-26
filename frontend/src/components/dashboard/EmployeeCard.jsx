@@ -1,5 +1,6 @@
 import { UserRound } from "lucide-react";
 import { EMPLOYEE_AVATAR_COLORS } from "../../constants/schedule";
+import PropTypes from "prop-types";
 
 const getAvatarColor = (employee) =>
   EMPLOYEE_AVATAR_COLORS[
@@ -18,9 +19,10 @@ export const EmployeeCard = ({ employee, branchName, onClick }) => {
     .toUpperCase();
 
   return (
-    <article
+    <button
+      type="button"
       onClick={onClick}
-      className="cursor-pointer rounded-2xl border border-white/70 bg-white/90 p-4 shadow-sm shadow-slate-200/80 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-100/70"
+      className="w-full cursor-pointer rounded-2xl border border-white/70 bg-white/90 p-4 text-left shadow-sm shadow-slate-200/80 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-100/70"
     >
       <div className="flex items-start gap-3">
         <div
@@ -46,6 +48,17 @@ export const EmployeeCard = ({ employee, branchName, onClick }) => {
           </div>
         </div>
       </div>
-    </article>
+    </button>
   );
+};
+
+EmployeeCard.propTypes = {
+  employee: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    name: PropTypes.string,
+    surname: PropTypes.string,
+    position: PropTypes.string,
+  }),
+  branchName: PropTypes.string,
+  onClick: PropTypes.func,
 };

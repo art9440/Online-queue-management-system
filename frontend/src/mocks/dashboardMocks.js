@@ -195,9 +195,9 @@ export const mockBookings = [
 ];
 
 export const getBranchDashboardData = (branchIds) => {
-  const ids = branchIds.map(Number);
+  const ids = new Set(branchIds.map(Number));
   const branchBookings = mockBookings.filter((booking) =>
-    ids.includes(Number(booking.branch_id))
+    ids.has(Number(booking.branch_id))
   );
   const branchClientIds = new Set(
     branchBookings.map((booking) => Number(booking.client_id))
@@ -205,11 +205,11 @@ export const getBranchDashboardData = (branchIds) => {
 
   return {
     employees: mockEmployees.filter((employee) =>
-      ids.includes(Number(employee.branch_id))
+      ids.has(Number(employee.branch_id))
     ),
     clients: mockClients.filter((client) => branchClientIds.has(Number(client.id))),
     services: mockServices.filter((service) =>
-      ids.includes(Number(service.branch_id))
+      ids.has(Number(service.branch_id))
     ),
     bookings: branchBookings,
   };

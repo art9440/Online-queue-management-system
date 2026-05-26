@@ -6,6 +6,7 @@ import {
   Store,
 } from "lucide-react";
 import { useState } from "react";
+import PropTypes from "prop-types";
 
 const formatDateParts = (date = new Date()) => {
   const source = new Date(date);
@@ -119,4 +120,25 @@ export const DashboardTopBar = ({
       </div>
     </header>
   );
+};
+
+DashboardTopBar.propTypes = {
+  user: PropTypes.shape({
+    business_name: PropTypes.string,
+    businessName: PropTypes.string,
+    business: PropTypes.string,
+    business_id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    login: PropTypes.string,
+  }),
+  title: PropTypes.string.isRequired,
+  currentDate: PropTypes.oneOfType([
+    PropTypes.instanceOf(Date),
+    PropTypes.string,
+    PropTypes.number,
+  ]),
+  businessName: PropTypes.string,
+  branchName: PropTypes.string,
+  onMenuClick: PropTypes.func,
+  onLogout: PropTypes.func,
+  rightSlot: PropTypes.node,
 };

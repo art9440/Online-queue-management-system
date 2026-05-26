@@ -1,4 +1,5 @@
 import { CircleDollarSign, Clock, UserRoundCheck, Users } from "lucide-react";
+import PropTypes from "prop-types";
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("ru-RU", {
@@ -83,4 +84,23 @@ export const BranchDaySummary = ({
       </div>
     </section>
   );
+};
+
+SummaryItem.propTypes = {
+  icon: PropTypes.elementType.isRequired,
+  label: PropTypes.string.isRequired,
+  value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+};
+
+BranchDaySummary.propTypes = {
+  branchName: PropTypes.string,
+  bookings: PropTypes.arrayOf(
+    PropTypes.shape({
+      start_time: PropTypes.string,
+      end_time: PropTypes.string,
+      price: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+      employee_id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    })
+  ),
+  employees: PropTypes.arrayOf(PropTypes.object),
 };

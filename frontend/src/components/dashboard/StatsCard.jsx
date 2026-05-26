@@ -1,3 +1,5 @@
+import PropTypes from "prop-types";
+
 const toneClasses = {
   indigo: "bg-indigo-50 text-indigo-600 border-indigo-100",
   blue: "bg-blue-50 text-blue-600 border-blue-100",
@@ -58,4 +60,19 @@ export const StatsCard = ({
       )}
     </article>
   );
+};
+
+StatsCard.propTypes = {
+  title: PropTypes.string.isRequired,
+  value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  subtitle: PropTypes.string,
+  icon: PropTypes.elementType.isRequired,
+  tone: PropTypes.string,
+  trend: PropTypes.oneOfType([
+    PropTypes.number,
+    PropTypes.shape({
+      value: PropTypes.number,
+      label: PropTypes.string,
+    }),
+  ]),
 };

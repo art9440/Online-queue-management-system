@@ -5,6 +5,7 @@ import { getBranches } from "../api/branches";
 import { DashboardTopBar } from "../components/layouts/DashboardTopBar";
 import { Sidebar } from "../components/layouts/Sidebar";
 import { useAuth } from "../context/AuthContext";
+import PropTypes from "prop-types";
 
 const normalizeBranch = (branch) => ({
   id: branch.id,
@@ -12,14 +13,14 @@ const normalizeBranch = (branch) => ({
   address: branch.address,
 });
 
-const getIsManagerPath = () => window.location.pathname.startsWith("/manager");
+const getIsManagerPath = () => globalThis.window.location.pathname.startsWith("/manager");
 
 const DEMO_BOOKING_SLUG = "demo-business";
 
 const getPublicBookingLink = (slug) => {
   if (!slug) return "";
   if (typeof window === "undefined") return `/public/${slug}`;
-  return `${window.location.origin}/public/${slug}`;
+  return `${globalThis.window.location.origin}/public/${slug}`;
 };
 
 const BookingLinkModal = ({ bookingLink, isDemoLink, onClose }) => {
@@ -30,7 +31,7 @@ const BookingLinkModal = ({ bookingLink, isDemoLink, onClose }) => {
 
     await navigator.clipboard.writeText(bookingLink);
     setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
+    globalThis.window.setTimeout(() => setCopied(false), 1800);
   };
 
   return (
@@ -96,6 +97,11 @@ const BookingLinkModal = ({ bookingLink, isDemoLink, onClose }) => {
       </section>
     </div>
   );
+};
+
+BookingLinkModal.propTypes = {
+  bookingLink: PropTypes.string.isRequired,
+  onClose: PropTypes.func.isRequired,
 };
 
 export const SettingsPage = () => {

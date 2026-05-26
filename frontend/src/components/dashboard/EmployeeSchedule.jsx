@@ -3,6 +3,7 @@ import {
   DEFAULT_TIME_SLOTS,
   EMPLOYEE_AVATAR_COLORS,
 } from "../../constants/schedule";
+import PropTypes from "prop-types";
 
 const getBookingTime = (booking) => {
   const start = booking.start_time;
@@ -142,4 +143,25 @@ export const EmployeeSchedule = ({
       </div>
     </section>
   );
+};
+
+EmployeeSchedule.propTypes = {
+  employees: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+      name: PropTypes.string,
+      surname: PropTypes.string,
+      position: PropTypes.string,
+    })
+  ),
+  bookings: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+      employee_id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+      start_time: PropTypes.string,
+    })
+  ),
+  selectedDate: PropTypes.string,
+  timeSlots: PropTypes.arrayOf(PropTypes.string),
+  emptyText: PropTypes.string,
 };

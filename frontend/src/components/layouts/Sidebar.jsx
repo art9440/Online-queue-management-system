@@ -8,6 +8,7 @@ import {
   Store,
   Users,
 } from "lucide-react";
+import PropTypes from "prop-types";
 
 const adminItems = [
   { to: "/admin", label: "Филиалы", icon: Store },
@@ -46,12 +47,12 @@ export const Sidebar = ({
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-gradient-to-b from-slate-950 via-indigo-950 to-slate-950 text-white shadow-2xl transition-transform duration-200 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-linear-to-b from-slate-950 via-indigo-950 to-slate-950 text-white shadow-2xl transition-transform duration-200 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex h-18 items-center gap-3 border-b border-white/10 px-5 py-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-400 text-lg font-black shadow-lg shadow-indigo-950/40">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-linear-to-br from-violet-500 to-fuchsia-400 text-lg font-black shadow-lg shadow-indigo-950/40">
             Q
           </div>
           <div>
@@ -68,7 +69,7 @@ export const Sidebar = ({
                   to={item.to}
                   end={item.to === "/admin" || item.to === "/manager"}
                   onClick={() => {
-                    if (window.innerWidth < 1024) onClose?.();
+                    if (globalThis.window.innerWidth < 1024) onClose?.();
                   }}
                   className={({ isActive }) =>
                     `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all ${
@@ -99,4 +100,12 @@ export const Sidebar = ({
       </aside>
     </>
   );
+};
+
+Sidebar.propTypes = {
+  role: PropTypes.string,
+  isOpen: PropTypes.bool,
+  onClose: PropTypes.func,
+  onLogout: PropTypes.func,
+  brand: PropTypes.string,
 };

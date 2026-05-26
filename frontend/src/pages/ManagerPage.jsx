@@ -141,7 +141,7 @@ export const ManagerPage = () => {
         />
 
         <main className="flex-1 overflow-auto p-4 lg:p-6">
-          <div className="mx-auto max-w-[1600px] space-y-4">
+          <div className="mx-auto max-w-400 space-y-4">
             {isError && (
               <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                 Не удалось загрузить филиал из API. Проверь branches service на

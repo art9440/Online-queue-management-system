@@ -1,4 +1,5 @@
 import { Clock, UserRound } from "lucide-react";
+import PropTypes from "prop-types";
 
 const bookingTones = [
   "border-teal-200 bg-teal-50 text-teal-950",
@@ -84,4 +85,18 @@ export const BookingCard = ({ booking }) => {
       )}
     </article>
   );
+};
+
+BookingCard.propTypes = {
+  booking: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    status: PropTypes.string,
+    client_name: PropTypes.string,
+    service_name: PropTypes.string,
+    start_time: PropTypes.string,
+    end_time: PropTypes.string,
+    price: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    employeeName: PropTypes.string,
+    comment: PropTypes.string,
+  }),
 };

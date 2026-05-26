@@ -1,4 +1,5 @@
 import { Clock, Scissors } from "lucide-react";
+import PropTypes from "prop-types";
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("ru-RU", {
@@ -66,4 +67,19 @@ export const ServiceCard = ({ service }) => {
       </div>
     </article>
   );
+};
+
+ServiceCard.propTypes = {
+  service: PropTypes.shape({
+    name: PropTypes.string,
+    variantsCount: PropTypes.number,
+    category: PropTypes.string,
+    isActive: PropTypes.bool,
+    duration_minutes: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    price: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    priceRange: PropTypes.shape({
+      min: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+      max: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    }),
+  }),
 };

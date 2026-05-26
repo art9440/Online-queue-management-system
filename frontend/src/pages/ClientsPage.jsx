@@ -18,7 +18,7 @@ const normalizeBranch = (branch) => ({
   address: branch.address,
 });
 
-const getIsManagerPath = () => window.location.pathname.startsWith("/manager");
+const getIsManagerPath = () => globalThis.window.location.pathname.startsWith("/manager");
 const getTodayKey = () => new Date().toISOString().slice(0, 10);
 
 const normalizeClient = (client, branch) => ({

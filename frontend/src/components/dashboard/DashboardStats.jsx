@@ -1,5 +1,6 @@
 import { BriefcaseBusiness, CalendarDays, CircleDollarSign, Users } from "lucide-react";
 import { StatsCard } from "./StatsCard";
+import PropTypes from "prop-types";
 
 const toNumber = (value) => Number(value || 0);
 
@@ -58,4 +59,16 @@ export const DashboardStats = ({
       ))}
     </section>
   );
+};
+
+DashboardStats.propTypes = {
+  bookings: PropTypes.arrayOf(
+    PropTypes.shape({
+      price: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+      service_id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    })
+  ),
+  employees: PropTypes.arrayOf(PropTypes.object),
+  services: PropTypes.arrayOf(PropTypes.object),
+  servicePrices: PropTypes.instanceOf(Map),
 };

@@ -1,4 +1,5 @@
 import { CalendarDays, CircleDollarSign, Sparkles, TrendingUp } from "lucide-react";
+import PropTypes from "prop-types";
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("ru-RU", {
@@ -66,4 +67,11 @@ export const TodayInfoCard = ({
       </div>
     </section>
   );
+};
+
+TodayInfoCard.propTypes = {
+  bookingsCount: PropTypes.number,
+  revenue: PropTypes.number,
+  newClients: PropTypes.number,
+  utilization: PropTypes.number,
 };
