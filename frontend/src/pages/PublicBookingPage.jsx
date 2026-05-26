@@ -244,7 +244,7 @@ export const PublicBookingPage = () => {
                 return;
             }
 
-            window.location.href = data.url;
+            globalThis.location.href = data.url;
         },
 
         onError: (error) => {
