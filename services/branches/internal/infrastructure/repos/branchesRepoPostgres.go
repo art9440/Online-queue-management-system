@@ -219,6 +219,11 @@ func (r *BranchesRepoPostgres) GetAppointmentsByBranchIDAndDate(
 		}
 
 		appointment.Client = client
+		appointment.EmployeeID = employee.ID
+		appointment.EmployeeName = employee.Name
+		appointment.EmployeeSurname = employee.Surname
+		appointment.ServiceID = service.ID
+		appointment.ServiceName = service.Name
 
 		appointments = append(appointments, appointment)
 	}
