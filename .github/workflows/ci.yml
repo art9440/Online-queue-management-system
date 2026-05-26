@@ -263,6 +263,7 @@ jobs:
             "DB_PASSWORD": "postgres"
           }
           EOF
+
       - name: Create Docker network
         run: |
           docker network inspect online_queue_network >/dev/null 2>&1 || docker network create online_queue_network

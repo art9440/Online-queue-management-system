@@ -186,4 +186,4 @@ volumes:
 networks:
   online_queue_network:
     name: online_queue_network
-    driver: bridge
+    external: true
