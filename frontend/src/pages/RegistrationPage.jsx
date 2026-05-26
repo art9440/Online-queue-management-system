@@ -1,10 +1,11 @@
-import { useState, useEffect} from "react";
+import { useEffect} from "react";
 import { useNavigate } from "react-router-dom";
 import { registerBusiness } from "../api/registration";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
+import { useFormValidation } from "../hooks/useFormValidation";
 
 export const RegistrationPage = () => {
   const navigate = useNavigate();
@@ -15,14 +16,6 @@ export const RegistrationPage = () => {
       navigate(getRedirectPath(user), { replace: true });
     }
   }, [user, loading, navigate, getRedirectPath]);
-
-  const [fieldError, setFieldError] = useState({});
-  const [formData, setFormData] = useState({
-    businessName: "",
-    email: "",
-    password: "",
-    businessType: "salon",
-  });
 
   const businessTypes = [
     { value: "salon", label: "Салон красоты" },
@@ -55,42 +48,22 @@ export const RegistrationPage = () => {
     }
   };
 
-  const handleBlur = (e) => {
-    const { name, value } = e.target;
-    const error = validateField(name, value);
-    if (error) {
-      setFieldError((prev) => ({ ...prev, [name]: error }));
-    }
-  };
-
-  const validateForm = () => {
-    const errors = {};
-    let isValid = true;
-
-    Object.keys(formData).forEach((key) => {
-      const error = validateField(key, formData[key]);
-      if (error) {
-        errors[key] = error;
-        isValid = false;
-      }
-    });
-
-    setFieldError(errors);
-    return isValid;
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-
-    if (fieldError[name]) {
-      setFieldError((prev) => ({ ...prev, [name]: null }));
-    }
-
-    if (fieldError.submit) {
-      setFieldError((prev) => ({...prev, submit: null}));
-    }
-  };
+  const {
+    formData,
+    fieldError,
+    setFieldError,
+    handleBlur,
+    handleChange,
+    validateForm,
+  } = useFormValidation(
+    {
+      businessName: "",
+      email: "",
+      password: "",
+      businessType: "salon",
+    },
+    validateField
+  );
 
   const mutation = useMutation({
     mutationFn: registerBusiness,

@@ -1,28 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
+import { useFormValidation } from "../hooks/useFormValidation";
 
 export const LoginPage = () => {
   const navigate = useNavigate();
   const { user, login, loading, error, getRedirectPath } = useAuth();
-
-  const [fieldError, setFieldError] = useState({});
-  const [formData, setFormData] = useState({
-    login: "",
-    password: "",
-  });
-
-  useEffect(() => {
-    setFieldError({});
-  }, []);
-
-  useEffect(() => {
-    if (user && !loading) {
-      navigate(getRedirectPath(user), { replace: true });
-    }
-  }, [user, loading, navigate, getRedirectPath]);
 
   const validateField = (name, value) => {
     switch (name) {
@@ -38,41 +23,26 @@ export const LoginPage = () => {
     }
   };
 
-  const handleBlur = (e) => {
-    const { name, value } = e.target;
-    const error = validateField(name, value);
-    if (error) {
-      setFieldError((prev) => ({ ...prev, [name]: error }));
+  const {
+    formData,
+    fieldError,
+    setFieldError,
+    handleBlur,
+    handleChange,
+    validateForm,
+  } = useFormValidation(
+    {
+      login: "",
+      password: "",
+    },
+    validateField
+  );
+
+  useEffect(() => {
+    if (user && !loading) {
+      navigate(getRedirectPath(user), { replace: true });
     }
-  };
-
-  const validateForm = () => {
-    const errors = {};
-    let isValid = true;
-
-    Object.keys(formData).forEach((key) => {
-      const error = validateField(key, formData[key]);
-      if (error) {
-        errors[key] = error;
-        isValid = false;
-      }
-    });
-
-    setFieldError(errors);
-    return isValid;
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-
-    if (fieldError[name]) {
-      setFieldError((prev) => ({ ...prev, [name]: null }));
-    }
-    if (fieldError.auth) {
-      setFieldError((prev) => ({ ...prev, auth: null }));
-    }
-  };
+  }, [user, loading, navigate, getRedirectPath]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
