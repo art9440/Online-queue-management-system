@@ -10,6 +10,7 @@ function App() {
       <Routes>
         <Route path="/register" element={<RegistrationPage/>}/>
         <Route path="/verify" element={<VerifyPage />} />
+        <Route path="/login" element={<LoginPage />} />
         <Route path="/public/:registrationSlug" element={<PublicBookingPage />} />
       </Routes>
     </Router>
