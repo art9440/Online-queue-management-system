@@ -174,13 +174,14 @@ export const PublicBookingPage = () => {
     };
 
     const isValidPhone = (phone) => {
-        const phoneRegex = /^(\+7|7|8)?[\s\-]?\(?[489][0-9]{2}\)?[\s\-]?[0-9]{3}[\s\-]?[0-9]{2}[\s\-]?[0-9]{2}$/;
+        if (!phone) return false;
         const digitsOnly = phone.replace(/\D/g, '');
-        return digitsOnly.length === 11 && phoneRegex.test(phone);
+        return digitsOnly.length === 11 && (['7', '8', '9'].includes(digitsOnly[0]));
     };
 
     const isValidEmail = (email) => {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!email || email.length > 254) return false;
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
         return emailRegex.test(email);
 };
 
