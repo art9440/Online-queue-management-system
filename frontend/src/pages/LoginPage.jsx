@@ -108,20 +108,6 @@ export const LoginPage = () => {
             error={fieldError.password || (fieldError.login === null ? "has-error" : null)}
           />
 
-{/*           <div className="flex items-center justify-between mb-6">
-            <label className="flex items-center gap-2">
-              <input type="checkbox" className="rounded border-gray-300" />
-              <span className="text-sm text-gray-600">Запомнить меня</span>
-            </label>
-            <button 
-              type="button"
-              className="text-sm text-indigo-600 hover:text-indigo-700 hover:underline"
-              onClick={() => navigate('/forgot-password')}
-            >
-              Забыли пароль?
-            </button>
-          </div> */}
-
           <Button data-cy="submit"
             type="submit"
             loading={loading}
