@@ -31,11 +31,9 @@ describe('Public Booking Page: e2e testing', () => {
     it('should successfully create a booking', () => {
         completeStepsToDataForm();
 
-        // Form
         fillDataForm();
         cy.get('[data-cy="confirm-booking-button"]').click();
 
-        // Confirm appointment creation
         cy.wait('@createAppointment')
         .its('response.statusCode')
         .should('eq', 201);
@@ -73,7 +71,6 @@ describe('Public Booking Page: e2e testing', () => {
         cy.get('[data-cy="data-phone-input"]').type('invalid-phone');
         cy.get('[data-cy="confirm-booking-button"]').click();
         
-        // Проверяем ошибку валидации телефона
         cy.contains('Неверный формат телефона').should('exist');
     });
 
@@ -125,186 +122,116 @@ describe('Public Booking Page: e2e testing', () => {
         });
 
 
-    it('should save previously saved data', () => {
-        cy.wait('@getServices');
-
-        cy.contains('Загружаем услуги...').should('not.exist');
-
-        cy.get('[data-cy="service-option-button"]')
-        .should('have.length.at.least', 1)
-        .first()
-        .click();
-        cy.get('[data-cy="go-to-branch-button"]').click();
-
-        // Back button pressed
-        cy.get('[data-cy="back-button"]').click();
-        cy.get('[data-cy="service-option-button"]')
-        .first()
-        .should('have.class', 'border-blue-500')
-        .and('have.class', 'bg-blue-50');
-
-        cy.get('[data-cy="go-to-branch-button"]').click();
-
-        cy.wait('@getBranches');
-
-        cy.get('[data-cy="branch-option-button"]')
-        .should('have.length.at.least', 1)
-        .first()
-        .click();
-        cy.get('[data-cy="go-to-master-button"]').click();
-
-        // Back button pressed
-        cy.get('[data-cy="back-button"]').click();
-        cy.get('[data-cy="branch-option-button"')
-        .first()
-        .should('have.class', 'border-blue-500')
-        .and('have.class', 'bg-blue-50');
-
-        cy.get('[data-cy="go-to-master-button"]').click();
-
-        cy.wait('@getEmployees');
-
-        cy.get('[data-cy="master-option-button"]')
-        .should('have.length.at.least', 1)
-        .first()
-        .click();
-        cy.get('[data-cy="go-to-time-button"]').click();
-
-        // Back button pressed
-        cy.get('[data-cy="back-button"]').click();
-        cy.get('[data-cy="master-option-button"]')
-        .first()
-        .should('have.class', 'border-blue-500')
-        .and('have.class', 'bg-blue-50');
-
-        cy.get('[data-cy="go-to-time-button"]').click();
-
-        cy.wait('@getSlots');
-
-        const targetDate = new Date();
-
-        targetDate.setDate(targetDate.getDate() + 2);
-
-        const formattedDate =
-            targetDate.toISOString().split('T')[0];
-
-        cy.get('[data-cy="date-input"]')
-    .then(($input) => {
-        const input = $input[0];
-
-        const nativeInputValueSetter =
-            Object.getOwnPropertyDescriptor(
-                window.HTMLInputElement.prototype,
-                'value'
-            ).set;
-
-        nativeInputValueSetter.call(
-            input,
-            formattedDate
-        );
-
-        input.dispatchEvent(
-            new Event('input', { bubbles: true })
-        );
-
-        input.dispatchEvent(
-            new Event('change', { bubbles: true })
-        );
-    });
-
-        cy.get('[data-cy="date-input"]')
-        .should('have.value', formattedDate);
-
-        cy.get('[data-cy="time-select-button"]')
-        .should('have.length.greaterThan', 0)
-        .first()
-        .click();
-
-        cy.get('[data-cy="go-to-data-button"]')
-        .click();
-
-        // Back button pressed
-        cy.get('[data-cy="back-button"]').click();
-        cy.get('[data-cy="time-select-button"]')
-        .first()
-        .should('have.class', 'border-blue-500')
-        .and('have.class', 'bg-blue-50');
-
-        cy.get('[data-cy="go-to-data-button"]')
-        .click();
-
-        fillDataForm();
-        cy.get('[data-cy="confirm-booking-button"]').click();
-
-        cy.wait('@createAppointment')
-        .its('response.statusCode')
-        .should('eq', 201);
-    });
-
+        it('should save previously saved data', () => {
+            selectService();
+    
+            cy.get('[data-cy="back-button"]').click();
+            assertOptionSelected('[data-cy="service-option-button"]');
+            cy.get('[data-cy="go-to-branch-button"]').click();
+    
+            selectBranch();
+    
+            cy.get('[data-cy="back-button"]').click();
+            assertOptionSelected('[data-cy="branch-option-button"]');
+            cy.get('[data-cy="go-to-master-button"]').click();
+    
+            selectEmployee();
+    
+            cy.get('[data-cy="back-button"]').click();
+            assertOptionSelected('[data-cy="master-option-button"]');
+            cy.get('[data-cy="go-to-time-button"]').click();
+    
+            cy.wait('@getSlots');
+    
+            setDateInput(2);
+    
+            cy.get('[data-cy="time-select-button"]')
+                .should('have.length.greaterThan', 0)
+                .first()
+                .click();
+    
+            cy.get('[data-cy="go-to-data-button"]').click();
+    
+            cy.get('[data-cy="back-button"]').click();
+            assertOptionSelected('[data-cy="time-select-button"]');
+            cy.get('[data-cy="go-to-data-button"]').click();
+    
+            fillDataForm();
+            cy.get('[data-cy="confirm-booking-button"]').click();
+    
+            cy.wait('@createAppointment')
+                .its('response.statusCode')
+                .should('eq', 201);
+        });
 });
 
-function completeStepsToDataForm() {
+function selectService() {
     cy.wait('@getServices');
-    // Services
     cy.contains('Загружаем услуги...').should('not.exist');
-
+ 
     cy.get('[data-cy="service-option-button"]')
-    .should('have.length.at.least', 1)
-    .first()
-    .click();
+        .should('have.length.at.least', 1)
+        .first()
+        .click();
     cy.get('[data-cy="go-to-branch-button"]').click();
-
-    // Branches
+}
+ 
+function selectBranch() {
     cy.wait('@getBranches');
-
+ 
     cy.get('[data-cy="branch-option-button"]')
-    .should('have.length.at.least', 1)
-    .first()
-    .click();
+        .should('have.length.at.least', 1)
+        .first()
+        .click();
     cy.get('[data-cy="go-to-master-button"]').click();
-
-    // Employees
+}
+ 
+function selectEmployee() {
     cy.wait('@getEmployees');
-
+ 
     cy.get('[data-cy="master-option-button"]')
-    .should('have.length.at.least', 1)
-    .first()
-    .click();
+        .should('have.length.at.least', 1)
+        .first()
+        .click();
     cy.get('[data-cy="go-to-time-button"]').click();
+}
 
-    // Slots (time & data)
+function setDateInput(daysOffset) {
+    const date = new Date();
+    date.setDate(date.getDate() + daysOffset);
+    const formattedDate = date.toISOString().split('T')[0];
+ 
+    cy.get('[data-cy="date-input"]').then(($input) => {
+        const input = $input[0];
+        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+            window.HTMLInputElement.prototype,
+            'value'
+        ).set;
+ 
+        nativeInputValueSetter.call(input, formattedDate);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+ 
+    cy.get('[data-cy="date-input"]').should('have.value', formattedDate);
+}
+
+function assertOptionSelected(selector) {
+    cy.get(selector)
+        .first()
+        .should('have.class', 'border-blue-500')
+        .and('have.class', 'bg-blue-50');
+}
+
+
+function completeStepsToDataForm() {
+    selectService();
+    selectBranch();
+    selectEmployee();
+ 
     cy.wait('@getSlots');
 
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 2);
-    const formattedDate = tomorrow.toISOString().split('T')[0];
-
-    cy.get('[data-cy="date-input"]')
-    .then(($input) => {
-        const input = $input[0];
-
-        const nativeInputValueSetter =
-            Object.getOwnPropertyDescriptor(
-                window.HTMLInputElement.prototype,
-                'value'
-            ).set;
-
-        nativeInputValueSetter.call(
-            input,
-            formattedDate
-        );
-
-        input.dispatchEvent(
-            new Event('input', { bubbles: true })
-        );
-
-        input.dispatchEvent(
-            new Event('change', { bubbles: true })
-        );
-    });
-
-    cy.get('[data-cy="date-input"]')
-    .should('have.value', formattedDate);
+    setDateInput(2);
 
     cy.get('[data-cy="time-select-button"]')
     .should('have.length.greaterThan', 0)
