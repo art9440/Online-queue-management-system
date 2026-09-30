@@ -958,6 +958,12 @@ Email:
 | `SMTP_PASS` | registration, scheduler |
 | `EMAIL_TIMEOUT` | optional, default `20s` |
 
+CORS:
+
+| Variable | Required by |
+| --- | --- |
+| `CORS_ALLOWED_ORIGINS` | optional, comma-separated; default `http://localhost:5173,http://127.0.0.1:5173,http://[::1]:5173` (auth, registration, branches, booking, bot) |
+
 Registration queue:
 
 | Variable | Required by |
