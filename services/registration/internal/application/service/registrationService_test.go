@@ -1,11 +1,11 @@
 package service
 
 import (
-	"Online-queue-management-system/libs/email"
 	"Online-queue-management-system/services/registration/internal/domain/pending"
 	"Online-queue-management-system/services/registration/internal/domain/recovery"
 	"Online-queue-management-system/services/registration/internal/mocks"
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -54,6 +54,23 @@ func TestRegister_WhenUserDoesNotExist_ShouldSavePendingRegistrationAndQueueEmai
 		t.Fatalf("expected six-digit code, got %q", saved.Code)
 	}
 	assertQueueLen(t, queue, 1)
+}
+
+func TestRegister_WhenEmailQueueFails_ShouldReturnError(t *testing.T) {
+	ctx := context.Background()
+	queue := mocks.NewTestEmailQueue()
+	queue.Err = errors.New("redis unavailable")
+	svc := NewRegistrationService(mocks.NewPendingRepo(), mocks.NewRecoveryRepo(), mocks.NewUserRepo(), queue, "")
+
+	_, err := svc.Register(ctx, RegisterInput{
+		Email:        "owner@example.com",
+		Password:     "secret-password",
+		BusinessName: "Demo Business",
+		BusinessType: "service_company",
+	})
+	if err == nil {
+		t.Fatal("expected error when the verification email cannot be queued")
+	}
 }
 
 func TestVerify_WhenUserAlreadyExists_ShouldReturnNilAndDeletePendingRegistration(t *testing.T) {
@@ -303,10 +320,10 @@ func TestConfirmPasswordRecovery_WhenCodeDoesNotMatch_ShouldReturnErrorWithoutUp
 	assertQueueLen(t, queue, 0)
 }
 
-func assertQueueLen(t *testing.T, queue *email.EmailQueue, expected int) {
+func assertQueueLen(t *testing.T, queue *mocks.EmailQueue, expected int) {
 	t.Helper()
 
-	queueLen, _, _ := queue.GetStats()
+	queueLen := len(queue.Messages)
 	if queueLen != expected {
 		t.Fatalf("expected email queue len %d, got %d", expected, queueLen)
 	}

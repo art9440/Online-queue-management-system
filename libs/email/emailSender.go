@@ -33,9 +33,16 @@ func (e *EmailSender) SendEmail(ctx context.Context, msg EmailMessage) error {
 	m.SetHeader("To", msg.To)
 	m.SetHeader("Subject", msg.Subject)
 
-	body := msg.HTMLBody
-
-	m.SetBody("text/html", body)
+	// Some emails (resent code, recovery code) have only a plain-text body.
+	switch {
+	case msg.HTMLBody != "" && msg.Body != "":
+		m.SetBody("text/plain", msg.Body)
+		m.AddAlternative("text/html", msg.HTMLBody)
+	case msg.HTMLBody != "":
+		m.SetBody("text/html", msg.HTMLBody)
+	default:
+		m.SetBody("text/plain", msg.Body)
+	}
 
 	log.Info("sending email", "to", msg.To)
 

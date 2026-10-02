@@ -1,14 +1,12 @@
 package mocks
 
 import (
-	"Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/email"
 	"Online-queue-management-system/services/registration/internal/domain"
 	"Online-queue-management-system/services/registration/internal/domain/pending"
 	"Online-queue-management-system/services/registration/internal/domain/recovery"
 	"context"
 	"errors"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -19,12 +17,22 @@ func (NoopEmailSender) SendEmail(context.Context, email.EmailMessage) error {
 	return nil
 }
 
-func NewTestEmailQueue() *email.EmailQueue {
-	return email.NewEmailQueue(NoopEmailSender{}, config.QueueConfig{
-		NumWorkers: 0,
-		RateLimit:  time.Hour,
-		WrkTimeOut: time.Second,
-	})
+// EmailQueue records enqueued emails instead of sending them.
+type EmailQueue struct {
+	Messages []email.EmailMessage
+	Err      error
+}
+
+func NewTestEmailQueue() *EmailQueue {
+	return &EmailQueue{}
+}
+
+func (q *EmailQueue) Enqueue(_ context.Context, msg email.EmailMessage) error {
+	if q.Err != nil {
+		return q.Err
+	}
+	q.Messages = append(q.Messages, msg)
+	return nil
 }
 
 type PendingRepo struct {

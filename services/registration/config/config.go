@@ -88,9 +88,11 @@ func LoadConfig(ctx context.Context) (*Config, error) {
 	wrkTimeOut := libconfig.GetDurationDefault(ctx, "WRK_TIMEOUT", 10*time.Second)
 
 	queueCfg := libconfig.QueueConfig{
-		NumWorkers: workers,
-		RateLimit:  rateLimit,
-		WrkTimeOut: wrkTimeOut,
+		NumWorkers:  workers,
+		RateLimit:   rateLimit,
+		WrkTimeOut:  wrkTimeOut,
+		RetryAfter:  libconfig.GetDurationDefault(ctx, "EMAIL_RETRY_AFTER", time.Minute),
+		MaxAttempts: libconfig.GetIntDefault(ctx, "EMAIL_MAX_ATTEMPTS", 5),
 	}
 
 	appEnv := libconfig.Get(ctx, "APP_ENV", "")

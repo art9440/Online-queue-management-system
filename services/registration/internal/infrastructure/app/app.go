@@ -44,7 +44,11 @@ func NewApp(ctx context.Context, cfg *config.Config, dbCfg *libconfig.DBConfig) 
 		return nil, err
 	}
 	emailSender := email.NewEmailSender(cfg.EmailSenderCfg)
-	emailQueue := email.NewEmailQueue(emailSender, cfg.QueueCfg)
+	emailQueue, err := email.NewEmailQueue(ctx, redisClient, emailSender, cfg.QueueCfg)
+	if err != nil {
+		log.Error("error creating email queue", "err", err)
+		return nil, err
+	}
 	svc := service.NewRegistrationService(repoRedis, repoRedis, repoPostgres, emailQueue, cfg.AppEnv)
 
 	serverImpl := httpserver.NewHttpServer(svc)
@@ -122,11 +126,7 @@ func (a *App) Run(ctx context.Context) error {
 	}
 	log.Info("http server stopped")
 
-	log.Info("shutting down email queue", "pending_emails", func() int {
-		queueLen, _, _ := a.emailQueue.GetStats()
-		return queueLen
-	}())
-
+	// Unsent emails stay in the Redis stream and are delivered after restart.
 	a.emailQueue.Shutdown()
 	log.Info("email queue stopped")
 
