@@ -73,6 +73,7 @@ jobs:
           DB_NAME=online_queue_db
           DB_USER=postgres
           DB_PASSWORD=postgres
+          DB_SSLMODE=disable
 
           REDIS_PASSWORD=redis_password
           REDIS_ADDR=redis:6379
@@ -220,6 +221,7 @@ jobs:
           DB_NAME=online_queue_db
           DB_USER=postgres
           DB_PASSWORD=postgres
+          DB_SSLMODE=disable
 
           REDIS_PASSWORD=redis_password
           REDIS_ADDR=redis:6379

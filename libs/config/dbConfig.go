@@ -41,7 +41,12 @@ func LoadDBConfig(ctx context.Context) (*DBConfig, error) {
 		return nil, err
 	}
 
-	sslMode := Get(ctx, "DB_SSLMODE", "disable")
+	// Required on purpose: TLS to the database must be an explicit per-environment decision.
+	sslMode, err := MustGet(ctx, "DB_SSLMODE")
+	if err != nil {
+		return nil, err
+	}
+
 	dsn := Get(ctx, "DB_DSN", "")
 	if dsn == "" {
 		dsn = fmt.Sprintf(
