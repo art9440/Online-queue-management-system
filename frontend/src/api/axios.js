@@ -7,21 +7,20 @@ const createApi = (baseURL) =>
     withCredentials: true,
   });
 
-export const registrationApi = createApi(
-  import.meta.env.VITE_REGISTRATION_URL || "http://localhost:8081"
-);
+// Runtime config (public/config.js, generated from env in the container) wins over
+// build-time VITE_* variables, which win over local defaults.
+const runtimeConfig = globalThis.__APP_CONFIG__ ?? {};
 
-export const authorizationApi = createApi(
-  import.meta.env.VITE_AUTH_URL || "http://localhost:8082"
-);
+const apiUrl = (key, fallback) =>
+  runtimeConfig[key] || import.meta.env[`VITE_${key}`] || fallback;
 
-export const branchesApi = createApi(
-  import.meta.env.VITE_BRANCHES_URL || "http://localhost:8083"
-);
+export const registrationApi = createApi(apiUrl("REGISTRATION_URL", "http://localhost:8081"));
 
-export const bookingApi = createApi(
-  import.meta.env.VITE_BOOKING_URL || "http://localhost:8084"
-);
+export const authorizationApi = createApi(apiUrl("AUTH_URL", "http://localhost:8082"));
+
+export const branchesApi = createApi(apiUrl("BRANCHES_URL", "http://localhost:8083"));
+
+export const bookingApi = createApi(apiUrl("BOOKING_URL", "http://localhost:8084"));
 
 let refreshRequest = null;
 

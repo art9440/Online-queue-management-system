@@ -159,6 +159,27 @@ services:
     networks:
       - online_queue_network
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      # Same origin as `npm run dev`, so CORS and FRONTEND_URL defaults keep working.
+      - "5173:8080"
+    environment:
+      # Addresses the browser uses to reach the APIs.
+      AUTH_URL: ${AUTH_URL:-http://localhost:8082}
+      REGISTRATION_URL: ${REGISTRATION_URL:-http://localhost:8081}
+      BRANCHES_URL: ${BRANCHES_URL:-http://localhost:8083}
+      BOOKING_URL: ${BOOKING_URL:-http://localhost:8084}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - online_queue_network
+
 volumes:
   postgres_data:
 

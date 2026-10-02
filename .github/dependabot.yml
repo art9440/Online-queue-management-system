@@ -9,10 +9,11 @@ updates:
       go-modules:
         patterns: ["*"]
 
-  # Service Dockerfiles: golang/alpine tags and their pinned digests.
+  # Dockerfiles: golang/alpine/node/nginx tags and their pinned digests.
   - package-ecosystem: docker
     directories:
       - /services/*
+      - /frontend
     schedule:
       interval: weekly
     groups:
