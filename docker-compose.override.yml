@@ -1,0 +1,54 @@
+# Development overrides, applied automatically by `docker compose` (not by `-f docker-compose.yml`).
+# Builds every image from local sources instead of pulling a release, and publishes
+# postgres/redis ports for local tools (psql, redis-cli, Cypress DB tasks).
+
+x-go-build: &go-build
+  context: .
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  migrate:
+    build:
+      <<: *go-build
+      dockerfile: services/migrate/migration.Dockerfile
+
+  auth:
+    build:
+      <<: *go-build
+      dockerfile: services/auth/auth.Dockerfile
+
+  registration:
+    build:
+      <<: *go-build
+      dockerfile: services/registration/registration.Dockerfile
+
+  branches:
+    build:
+      <<: *go-build
+      dockerfile: services/branches/branches.Dockerfile
+
+  booking:
+    build:
+      <<: *go-build
+      dockerfile: services/booking/booking.Dockerfile
+
+  scheduler:
+    build:
+      <<: *go-build
+      dockerfile: services/scheduler/scheduler.Dockerfile
+
+  bot:
+    build:
+      <<: *go-build
+      dockerfile: services/bot/bot.Dockerfile
+
+  frontend:
+    build:
+      context: ./frontend

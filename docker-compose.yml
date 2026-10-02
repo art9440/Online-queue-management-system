@@ -1,14 +1,31 @@
+# Run stage (12-factor V): every service runs from a released image + config from .env.
+#
+#   Production-like run (images from the registry, no build):
+#     IMAGE_TAG=<git-sha or v1.2.3> docker compose -f docker-compose.yml pull
+#     IMAGE_TAG=<git-sha or v1.2.3> docker compose -f docker-compose.yml up -d
+#
+#   Local development: docker-compose.override.yml is picked up automatically
+#   and adds `build:` for every service plus published postgres/redis ports:
+#     docker compose up -d --build
+#
+# There is no container_name anywhere, so stateless processes can be scaled:
+#   docker compose up -d --scale scheduler=2
+
+x-app: &app
+  env_file:
+    - .env
+  restart: unless-stopped
+  networks:
+    - online_queue_network
+
 services:
   postgres:
     image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
-    container_name: online_queue_postgres
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -21,41 +38,30 @@ services:
 
   redis:
     image: redis:7-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
-    container_name: redis
-
-    command: >
-      redis-server
-      --requirepass ${REDIS_PASSWORD}
-      --databases 16 
-    ports:
-      - "6379:6379"
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--databases", "16"]
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
       retries: 5
     networks:
       - online_queue_network
 
+  # Admin process (12-factor XII): one-off job from the same release, runs before the app.
   migrate:
-    build:
-      context: .
-      dockerfile: ./services/migrate/migration.Dockerfile
-    container_name: online_queue_migrate
+    <<: *app
+    image: ${IMAGE_REGISTRY:-ghcr.io/art9440}/oqms-migrate:${IMAGE_TAG:-latest}
+    restart: "no"
     depends_on:
       postgres:
         condition: service_healthy
-    env_file:
-      - .env
-    restart: "no"
-    networks:
-      - online_queue_network
 
   auth:
-    build:
-      context: .
-      dockerfile: ./services/auth/auth.Dockerfile
-    container_name: online_queue_auth
+    <<: *app
+    image: ${IMAGE_REGISTRY:-ghcr.io/art9440}/oqms-auth:${IMAGE_TAG:-latest}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -63,18 +69,12 @@ services:
         condition: service_healthy
     ports:
       - "8082:8082"
-    env_file:
-      - .env
     environment:
       SERVICE_NAME: auth
-    networks:
-      - online_queue_network
 
   registration:
-    build:
-      context: .
-      dockerfile: ./services/registration/registration.Dockerfile
-    container_name: online_queue_registration
+    <<: *app
+    image: ${IMAGE_REGISTRY:-ghcr.io/art9440}/oqms-registration:${IMAGE_TAG:-latest}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -82,35 +82,23 @@ services:
         condition: service_healthy
     ports:
       - "8081:8081"
-    env_file:
-      - .env
     environment:
       SERVICE_NAME: registration
-    networks:
-      - online_queue_network
 
   branches:
-    build:
-      context: .
-      dockerfile: ./services/branches/branches.Dockerfile
-    container_name: online_queue_branches
+    <<: *app
+    image: ${IMAGE_REGISTRY:-ghcr.io/art9440}/oqms-branches:${IMAGE_TAG:-latest}
     depends_on:
       migrate:
         condition: service_completed_successfully
     ports:
       - "8083:8083"
-    env_file:
-      - .env
     environment:
       SERVICE_NAME: branches
-    networks:
-      - online_queue_network
 
   booking:
-    build:
-      context: .
-      dockerfile: ./services/booking/booking.Dockerfile
-    container_name: online_queue_booking
+    <<: *app
+    image: ${IMAGE_REGISTRY:-ghcr.io/art9440}/oqms-booking:${IMAGE_TAG:-latest}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -118,51 +106,35 @@ services:
         condition: service_healthy
     ports:
       - "8084:8084"
-    env_file:
-      - .env
     environment:
       SERVICE_NAME: booking
-    networks:
-      - online_queue_network
 
+  # Background worker: no port, can be scaled.
   scheduler:
-    build:
-      context: .
-      dockerfile: ./services/scheduler/scheduler.Dockerfile
-    container_name: online_queue_scheduler
+    <<: *app
+    image: ${IMAGE_REGISTRY:-ghcr.io/art9440}/oqms-scheduler:${IMAGE_TAG:-latest}
     depends_on:
       redis:
         condition: service_healthy
       bot:
         condition: service_started
-    env_file:
-      - .env
     environment:
       SERVICE_NAME: scheduler
-    networks:
-      - online_queue_network
 
   bot:
-    build:
-      context: .
-      dockerfile: ./services/bot/bot.Dockerfile
-    container_name: online_queue_bot
+    <<: *app
+    image: ${IMAGE_REGISTRY:-ghcr.io/art9440}/oqms-bot:${IMAGE_TAG:-latest}
     depends_on:
       redis:
         condition: service_healthy
     ports:
       - "8085:8085"
-    env_file:
-      - .env
     environment:
       SERVICE_NAME: bot
-    networks:
-      - online_queue_network
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: ${IMAGE_REGISTRY:-ghcr.io/art9440}/oqms-frontend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
     ports:
       # Same origin as `npm run dev`, so CORS and FRONTEND_URL defaults keep working.
       - "5173:8080"
@@ -183,8 +155,6 @@ services:
 volumes:
   postgres_data:
 
-
 networks:
   online_queue_network:
     name: online_queue_network
-    external: true

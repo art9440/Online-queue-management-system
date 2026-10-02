@@ -60,56 +60,12 @@ jobs:
           mv apache-jmeter-5.6.3 jmeter
         
       - name: Create CI env file
-        run: |
-          cat > .env <<EOF
-          APP_ENV=test
-
-          POSTGRES_USER=postgres
-          POSTGRES_PASSWORD=postgres
-          POSTGRES_DB=online_queue_db
-
-          DB_HOST=postgres
-          DB_PORT=5432
-          DB_NAME=online_queue_db
-          DB_USER=postgres
-          DB_PASSWORD=postgres
-          DB_SSLMODE=disable
-
-          REDIS_PASSWORD=redis_password
-          REDIS_ADDR=redis:6379
-          REDIS_DB=0
-
-          JWT_ACCESS_SECRET=test_access_secret
-          JWT_REFRESH_SECRET=test_refresh_secret
-          ACCESS_TOKEN_TTL=15m
-          REFRESH_TOKEN_TTL=168h
-
-          COOKIE_SECURE=false
-
-          AUTH_PORT=8082
-          REGISTRATION_PORT=8081
-          BRANCHES_PORT=8083
-          BOOKING_PORT=8084
-          BOT_PORT=8085
-          SCHEDULER_PORT=8086
-
-          SMTP_HOST=localhost
-          SMTP_PORT=1025
-          SMTP_USER=test
-          SMTP_PASSWORD=test
-          SMTP_PASS=test
-          SMTP_FROM=test@example.com
-          EOF
-
-      - name: Create Docker network
-        run: |
-          docker network inspect online_queue_network >/dev/null 2>&1 || docker network create online_queue_network
+        run: .github/scripts/ci-env.sh
 
       - name: Start services
         run: |
-          docker compose up -d --build postgres redis
-          docker compose run --rm migrate
-          docker compose up -d auth registration branches booking bot scheduler
+          # docker-compose.override.yml adds build: sections; migrate runs first via depends_on.
+          docker compose up -d --build auth registration branches booking bot scheduler
 
       - name: Show docker logs
         if: always()
@@ -119,7 +75,7 @@ jobs:
 
       - name: Wait for registration service
         run: |
-          for i in {1..20}; do
+          for _ in {1..20}; do
             if curl -fsS http://localhost:8081/health; then
               exit 0
             fi
@@ -135,7 +91,7 @@ jobs:
 
       - name: Wait for auth service
         run: |
-          for i in {1..20}; do
+          for _ in {1..20}; do
             if curl -fsS http://localhost:8082/health; then
               exit 0
             fi
@@ -151,7 +107,7 @@ jobs:
 
       - name: Wait for booking service
         run: |
-          for i in {1..20}; do
+          for _ in {1..20}; do
             if curl -fsS http://localhost:8084/health; then
               exit 0
             fi
@@ -208,47 +164,7 @@ jobs:
         run: npm ci 
 
       - name: Create CI env file
-        run: |
-          cat > .env <<EOF
-          APP_ENV=test
-
-          POSTGRES_USER=postgres
-          POSTGRES_PASSWORD=postgres
-          POSTGRES_DB=online_queue_db
-
-          DB_HOST=postgres
-          DB_PORT=5432
-          DB_NAME=online_queue_db
-          DB_USER=postgres
-          DB_PASSWORD=postgres
-          DB_SSLMODE=disable
-
-          REDIS_PASSWORD=redis_password
-          REDIS_ADDR=redis:6379
-          REDIS_DB=0
-
-          JWT_ACCESS_SECRET=test_access_secret
-          JWT_REFRESH_SECRET=test_refresh_secret
-          ACCESS_TOKEN_TTL=15m
-          REFRESH_TOKEN_TTL=168h
-
-
-          COOKIE_SECURE=false
-
-          AUTH_PORT=8082
-          REGISTRATION_PORT=8081
-          BRANCHES_PORT=8083
-          BOOKING_PORT=8084
-          BOT_PORT=8085
-          SCHEDULER_PORT=8086
-
-          SMTP_HOST=localhost
-          SMTP_PORT=1025
-          SMTP_USER=test
-          SMTP_PASSWORD=test
-          SMTP_PASS=test
-          SMTP_FROM=test@example.com
-          EOF
+        run: .github/scripts/ci-env.sh
           
       - name: Create CI env file for frontend
         run: |
@@ -266,15 +182,10 @@ jobs:
           }
           EOF
 
-      - name: Create Docker network
-        run: |
-          docker network inspect online_queue_network >/dev/null 2>&1 || docker network create online_queue_network
-
       - name: Start services
         run: |
-           docker compose up -d --build postgres redis
-           docker compose run --rm migrate
-           docker compose up -d auth registration branches booking bot scheduler
+          # docker-compose.override.yml adds build: sections; migrate runs first via depends_on.
+          docker compose up -d --build auth registration branches booking bot scheduler
 
       - name: Show docker logs
         if: always()
@@ -284,7 +195,7 @@ jobs:
 
       - name: Wait for registration service
         run: |
-          for i in {1..20}; do
+          for _ in {1..20}; do
             if curl -fsS http://localhost:8081/health; then
               exit 0
             fi
@@ -300,7 +211,7 @@ jobs:
       
       - name: Wait for auth service
         run: |
-          for i in {1..20}; do
+          for _ in {1..20}; do
             if curl -fsS http://localhost:8082/health; then
               exit 0
             fi
@@ -316,7 +227,7 @@ jobs:
 
       - name: Wait for frontend
         run: |
-          for i in {1..20}; do
+          for _ in {1..20}; do
             if curl -fsS http://127.0.0.1:5173; then
               exit 0
             fi
