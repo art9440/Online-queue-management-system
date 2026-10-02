@@ -22,15 +22,8 @@ func NewHttpServer(svc *service.BookingService) *HttpServer {
 	return &HttpServer{svc: svc}
 }
 
-func (s *HttpServer) CreateAppointment(w http.ResponseWriter, r *http.Request) {
-	s.createAppointment(w, r, "")
-}
-
 func (s *HttpServer) CreatePublicAppointment(w http.ResponseWriter, r *http.Request) {
-	s.createAppointment(w, r, r.PathValue("registrationSlug"))
-}
-
-func (s *HttpServer) createAppointment(w http.ResponseWriter, r *http.Request, registrationSlug string) {
+	registrationSlug := r.PathValue("registrationSlug")
 	ctx := r.Context()
 	log := logger.From(ctx)
 

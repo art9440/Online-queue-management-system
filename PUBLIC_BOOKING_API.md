@@ -278,17 +278,4 @@ start_time
 
 ## Совместимость
 
-Старый endpoint создания записи остается доступен:
-
-```http
-POST /appointments
-Host: localhost:8084
-```
-
-Для публичного frontend-сценария лучше использовать:
-
-```http
-POST /public/{registrationSlug}/appointments
-```
-
-Так backend дополнительно проверяет связь записи с бизнесом из public-ссылки.
+Legacy-эндпоинт `POST /appointments` (без slug) удалён: он позволял создавать записи в любом бизнесе без проверки public-ссылки. Запись создаётся только через `POST /public/{registrationSlug}/appointments`; пустой или чужой slug отклоняется.

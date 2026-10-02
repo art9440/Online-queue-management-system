@@ -373,7 +373,7 @@ func (r *BookingRepoPostgres) CreateAppointment(
 			WHERE s.id = $4
 			  AND s.branch_id = $2
 			  AND e.branch_id = $2
-			  AND ($8 = '' OR bu.registration_slug = $8)
+			  AND bu.registration_slug = $8
 			  AND EXISTS (
 				  SELECT 1
 				  FROM employee_schedules sch

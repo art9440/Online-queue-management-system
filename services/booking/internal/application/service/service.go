@@ -141,6 +141,10 @@ func (s *BookingService) CreateAppointment(
 		return domain.CreateAppointmentOutput{}, domain.ErrInvalidClient
 	}
 
+	if input.RegistrationSlug == "" {
+		return domain.CreateAppointmentOutput{}, domain.ErrInvalidRegistrationSlug
+	}
+
 	if input.BranchID <= 0 {
 		return domain.CreateAppointmentOutput{}, liberrors.ErrInvalidBranchID
 	}

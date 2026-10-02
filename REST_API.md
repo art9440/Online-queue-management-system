@@ -624,9 +624,9 @@ Appointment statuses:
 
 Returns `200 OK`.
 
-### `POST /appointments`
+### `POST /public/{registrationSlug}/appointments`
 
-Creates an appointment without a `registrationSlug`. In the current code this endpoint is not authenticated.
+Public client booking endpoint for a business slug. No authentication. The branch, employee and service must belong to the business with this `registrationSlug`; an empty or foreign slug is rejected.
 
 Request:
 
@@ -688,12 +688,6 @@ Errors:
 - `400` invalid body, IDs, client data, contact, registration slug, start time
 - `409` busy or unavailable appointment slot
 - `500` repository/internal error
-
-### `POST /public/{registrationSlug}/appointments`
-
-Public client booking endpoint for a business slug. Request/response are the same as `POST /appointments`.
-
-Errors are the same as `POST /appointments`.
 
 ### `GET /public/{registrationSlug}/services/{serviceId}/branches/{branchId}/employees/{employeeId}/slots?date=YYYY-MM-DD`
 
@@ -997,8 +991,7 @@ Bot and scheduler:
 The code compiles and tests pass, but these points matter before production use:
 
 1. Several Registration and Branches routes are registered without method-specific patterns. Registration handlers also do not check HTTP method. Branches has method-specific `GET` patterns only for `/branches`, `/branches/{id}/clients`, and `/branches/{id}/bookings`; other branch/service routes currently accept any HTTP method and execute the GET handler.
-2. `POST /appointments` in Booking is unauthenticated in the current router. If this is meant for internal/admin use, it should be protected or removed in favor of `POST /public/{registrationSlug}/appointments`.
-3. Branches handlers often map domain errors like forbidden/not found to `500` instead of `403`/`404`; `/branches/{id}/clients` and `/branches/{id}/bookings` already have better error mapping.
-4. Registration maps most service errors from `/register` and `/password-recovery` to `500`, including validation-style errors. That may be acceptable for now but is not ideal API behavior.
-5. `.env` currently has no Google Calendar or Telegram variables listed. Google Calendar endpoints and Telegram sending will not fully work until those values are added where needed.
+2. Branches handlers often map domain errors like forbidden/not found to `500` instead of `403`/`404`; `/branches/{id}/clients` and `/branches/{id}/bookings` already have better error mapping.
+3. Registration maps most service errors from `/register` and `/password-recovery` to `500`, including validation-style errors. That may be acceptable for now but is not ideal API behavior.
+4. `.env` currently has no Google Calendar or Telegram variables listed. Google Calendar endpoints and Telegram sending will not fully work until those values are added where needed.
 6. The Auth and Branches apps log `JWT_ACCESS_SECRET`. That should be removed before real deployment.

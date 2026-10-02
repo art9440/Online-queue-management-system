@@ -66,11 +66,6 @@ func NewApp(
 	authMiddleware := auth.Middleware(parser)
 
 	mux.Handle(
-		"POST /appointments",
-		http.HandlerFunc(serverImpl.CreateAppointment),
-	)
-
-	mux.Handle(
 		"POST /public/{registrationSlug}/appointments",
 		http.HandlerFunc(serverImpl.CreatePublicAppointment),
 	)
