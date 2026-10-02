@@ -2,9 +2,6 @@ FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18
 
 WORKDIR /app
 
-# Cypress is only needed for e2e tests, not for the production bundle.
-ENV CYPRESS_INSTALL_BINARY=0
-
 COPY package.json package-lock.json ./
 RUN npm ci
 

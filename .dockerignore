@@ -1,11 +1,9 @@
 # Keep build contexts small and free of secrets (12-factor II/III).
 .git
-.github
 .vscode
 .idea
 bin
 docs
-tests
 *.md
 
 .env
@@ -15,9 +13,6 @@ tests
 frontend/node_modules
 frontend/dist
 frontend/.vite
-frontend/cypress/videos
-frontend/cypress/screenshots
-frontend/cypress.env.json
 
 coverage.out
 *.test

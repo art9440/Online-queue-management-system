@@ -143,7 +143,3 @@ yarn-error.log
 frontend/.vite/
 frontend/node_modules/
 frontend/dist/
-
-# Cypress (E2E тесты)
-frontend/cypress.env.json
-cypress.env.json

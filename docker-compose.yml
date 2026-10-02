@@ -1,15 +1,9 @@
-# Run stage (12-factor V): every service runs from a released image + config from .env.
+# Whole stack: images are built from local sources.
+#   cp .env.example .env
+#   docker compose up -d --build
 #
-#   Production-like run (images from the registry, no build):
-#     IMAGE_TAG=<git-sha or v1.2.3> docker compose -f docker-compose.yml pull
-#     IMAGE_TAG=<git-sha or v1.2.3> docker compose -f docker-compose.yml up -d
-#
-#   Local development: docker-compose.override.yml is picked up automatically
-#   and adds `build:` for every service plus published postgres/redis ports:
-#     docker compose up -d --build
-#
-# There is no container_name anywhere, so stateless processes can be scaled:
-#   docker compose up -d --scale scheduler=2
+# There is no container_name anywhere, so background workers can be scaled:
+#   docker compose up -d --scale scheduler=2 --scale bot=2
 
 x-app: &app
   env_file:
@@ -50,10 +44,12 @@ services:
     networks:
       - online_queue_network
 
-  # Admin process (12-factor XII): one-off job from the same release, runs before the app.
+  # Admin process (12-factor XII): one-off job from the same code, runs before the app.
   migrate:
     <<: *app
-    image: ${IMAGE_REGISTRY:-ghcr.io/art9440}/oqms-migrate:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/migrate/migration.Dockerfile
     restart: "no"
     depends_on:
       postgres:
@@ -61,7 +57,9 @@ services:
 
   auth:
     <<: *app
-    image: ${IMAGE_REGISTRY:-ghcr.io/art9440}/oqms-auth:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/auth/auth.Dockerfile
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -74,7 +72,9 @@ services:
 
   registration:
     <<: *app
-    image: ${IMAGE_REGISTRY:-ghcr.io/art9440}/oqms-registration:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/registration/registration.Dockerfile
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -87,7 +87,9 @@ services:
 
   branches:
     <<: *app
-    image: ${IMAGE_REGISTRY:-ghcr.io/art9440}/oqms-branches:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/branches/branches.Dockerfile
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -98,7 +100,9 @@ services:
 
   booking:
     <<: *app
-    image: ${IMAGE_REGISTRY:-ghcr.io/art9440}/oqms-booking:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/booking/booking.Dockerfile
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -112,7 +116,9 @@ services:
   # Background worker: no port, can be scaled.
   scheduler:
     <<: *app
-    image: ${IMAGE_REGISTRY:-ghcr.io/art9440}/oqms-scheduler:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/scheduler/scheduler.Dockerfile
     depends_on:
       redis:
         condition: service_healthy
@@ -123,7 +129,9 @@ services:
 
   bot:
     <<: *app
-    image: ${IMAGE_REGISTRY:-ghcr.io/art9440}/oqms-bot:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/bot/bot.Dockerfile
     depends_on:
       redis:
         condition: service_healthy
@@ -133,7 +141,8 @@ services:
       SERVICE_NAME: bot
 
   frontend:
-    image: ${IMAGE_REGISTRY:-ghcr.io/art9440}/oqms-frontend:${IMAGE_TAG:-latest}
+    build:
+      context: ./frontend
     restart: unless-stopped
     ports:
       # Same origin as `npm run dev`, so CORS and FRONTEND_URL defaults keep working.
