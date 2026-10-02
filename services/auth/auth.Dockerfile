@@ -1,22 +1,26 @@
-FROM golang:1.26 AS builder
+FROM golang:1.27.1-alpine@sha256:8a5910f31396cd4d89662f56c68b3ae31d374308270a1c3bd96672ee5ed43414 AS builder
 
-WORKDIR /app
+WORKDIR /src
 
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY services ./services
 COPY libs ./libs
+COPY services/auth ./services/auth
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/auth ./services/auth/cmd
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/auth ./services/auth/cmd
 
-FROM debian:bookworm-slim
+FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
+
+# ca-certificates: TLS to SMTP/Telegram/Google; tzdata: time.LoadLocation for branch timezones.
+RUN apk add --no-cache ca-certificates tzdata
 
 WORKDIR /app
 
-COPY --from=builder /app/auth /app/auth
-RUN chmod +x /app/auth
+COPY --from=builder --chown=root:root --chmod=555 /out/auth /app/auth
+
+USER 65532:65532
 
 EXPOSE 8082
 
-CMD ["/app/auth"]
+ENTRYPOINT ["/app/auth"]

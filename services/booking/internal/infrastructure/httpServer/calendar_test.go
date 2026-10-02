@@ -35,7 +35,7 @@ func TestDownloadPublicAppointmentICS(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.path, nil))
+			mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.path, http.NoBody))
 
 			if rec.Code != tt.wantStatus {
 				t.Fatalf("status = %d, want %d, body: %s", rec.Code, tt.wantStatus, rec.Body.String())
@@ -95,7 +95,7 @@ func TestGoogleCalendarCallbackRedirectsToFrontend(t *testing.T) {
 			srv := NewHttpServer(service.New(&fakeRepo{}, tokens, tt.exporter, nil), testFrontendURL)
 
 			rec := httptest.NewRecorder()
-			srv.GoogleCalendarCallback(rec, httptest.NewRequest(http.MethodGet, "/google-calendar/callback"+tt.query, nil))
+			srv.GoogleCalendarCallback(rec, httptest.NewRequest(http.MethodGet, "/google-calendar/callback"+tt.query, http.NoBody))
 
 			if rec.Code != http.StatusFound {
 				t.Fatalf("status = %d, want %d", rec.Code, http.StatusFound)

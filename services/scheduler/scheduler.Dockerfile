@@ -1,21 +1,24 @@
-FROM golang:1.26@sha256:313faae491b410a35402c05d35e7518ae99103d957308e940e1ae2cfa0aac29b AS builder
+FROM golang:1.27.1-alpine@sha256:8a5910f31396cd4d89662f56c68b3ae31d374308270a1c3bd96672ee5ed43414 AS builder
 
-WORKDIR /app
+WORKDIR /src
 
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY services ./services
 COPY libs ./libs
+COPY services/scheduler ./services/scheduler
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/scheduler ./services/scheduler/cmd
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/scheduler ./services/scheduler/cmd
 
-FROM debian:bookworm-slim@sha256:67b30a61dc87758f0caf819646104f29ecbda97d920aaf5edc834128ac8493d3
+FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
+
+# ca-certificates: TLS to SMTP/Telegram/Google; tzdata: time.LoadLocation for branch timezones.
+RUN apk add --no-cache ca-certificates tzdata
 
 WORKDIR /app
 
-COPY --from=builder --chown=root:root --chmod=555 /app/scheduler /app/scheduler
+COPY --from=builder --chown=root:root --chmod=555 /out/scheduler /app/scheduler
 
 USER 65532:65532
 
-CMD ["/app/scheduler"]
+ENTRYPOINT ["/app/scheduler"]

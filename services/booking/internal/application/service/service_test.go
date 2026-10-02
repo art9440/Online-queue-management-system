@@ -33,7 +33,7 @@ type fakeBookingRepo struct {
 	calls int
 }
 
-func (r *fakeBookingRepo) CheckClientExists(context.Context, domain.ClientInput) (int64, bool, error) {
+func (r *fakeBookingRepo) CheckClientExists(context.Context, domain.ClientInput) (clientID int64, exists bool, err error) {
 	r.calls++
 	return 0, false, nil
 }
