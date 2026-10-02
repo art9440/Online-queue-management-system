@@ -15,4 +15,5 @@ var (
 	ErrAppointmentCompleted    = errors.New("completed appointment cannot be cancelled")
 	ErrGoogleCalendarDisabled  = errors.New("google calendar integration is disabled")
 	ErrGoogleCalendarNotLinked = errors.New("google calendar is not linked")
+	ErrCalendarExportNotFound  = errors.New("calendar export link is invalid or expired")
 )

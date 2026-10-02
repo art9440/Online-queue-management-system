@@ -42,8 +42,9 @@ export const getPublicSlots = ({ registrationSlug, serviceId, branchId, employee
     ));
 };
 
+export const getBookingUrl = (path) => new URL(path, bookingApi.defaults.baseURL).toString();
+
 export const getGoogleOAuthUrl = (googleCalendarExportUrl) => {
-    console.log(googleCalendarExportUrl);
     return request(() => bookingApi.get(
         `${googleCalendarExportUrl}`,
         { withCredentials: true }

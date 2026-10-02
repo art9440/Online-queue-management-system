@@ -196,7 +196,7 @@ func (s *BookingService) CreateAppointment(
 		}
 	}
 
-	if s.tokenRepo != nil && s.exporter != nil {
+	if s.tokenRepo != nil {
 		exportToken, err := generateOAuthState()
 		if err != nil {
 			return domain.CreateAppointmentOutput{}, err
@@ -204,14 +204,45 @@ func (s *BookingService) CreateAppointment(
 		if err := s.tokenRepo.SavePublicExportToken(ctx, exportToken, appointment.AppointmentID); err != nil {
 			return domain.CreateAppointmentOutput{}, err
 		}
-		appointment.GoogleCalendarExportURL = fmt.Sprintf(
-			"/public/appointments/%d/google-calendar/auth-url?token=%s",
+		appointment.CalendarICSURL = fmt.Sprintf(
+			"/public/appointments/%d/calendar.ics?token=%s",
 			appointment.AppointmentID,
 			exportToken,
 		)
+		if s.exporter != nil {
+			appointment.GoogleCalendarExportURL = fmt.Sprintf(
+				"/public/appointments/%d/google-calendar/auth-url?token=%s",
+				appointment.AppointmentID,
+				exportToken,
+			)
+		}
 	}
 
 	return appointment, nil
+}
+
+// GetPublicAppointmentCalendar returns event details for an appointment if exportToken was issued for it.
+func (s *BookingService) GetPublicAppointmentCalendar(
+	ctx context.Context,
+	appointmentID int64,
+	exportToken string,
+) (domain.AppointmentCalendarDetails, error) {
+	if appointmentID <= 0 || exportToken == "" || s.tokenRepo == nil {
+		return domain.AppointmentCalendarDetails{}, domain.ErrCalendarExportNotFound
+	}
+
+	tokenAppointmentID, err := s.tokenRepo.GetPublicExportToken(ctx, exportToken)
+	if errors.Is(err, domain.ErrGoogleCalendarNotLinked) {
+		return domain.AppointmentCalendarDetails{}, domain.ErrCalendarExportNotFound
+	}
+	if err != nil {
+		return domain.AppointmentCalendarDetails{}, err
+	}
+	if tokenAppointmentID != appointmentID {
+		return domain.AppointmentCalendarDetails{}, domain.ErrCalendarExportNotFound
+	}
+
+	return s.repoPostgres.GetAppointmentCalendarDetails(ctx, appointmentID)
 }
 
 func (s *BookingService) GetAvailableSlots(
@@ -260,34 +291,45 @@ func (s *BookingService) GoogleCalendarAuthURL(ctx context.Context, user *auth.A
 	return s.exporter.AuthCodeURL(state)
 }
 
-func (s *BookingService) CompleteGoogleCalendarOAuth(ctx context.Context, state, code string) error {
+// CompleteGoogleCalendarOAuth handles the Google OAuth callback for both the public and the dashboard flow.
+// The result is filled whenever the flow is known, even on error, so the caller can redirect the user back.
+func (s *BookingService) CompleteGoogleCalendarOAuth(
+	ctx context.Context,
+	state, code string,
+) (domain.CalendarOAuthResult, error) {
 	if s.tokenRepo == nil || s.exporter == nil {
-		return domain.ErrGoogleCalendarDisabled
+		return domain.CalendarOAuthResult{}, domain.ErrGoogleCalendarDisabled
 	}
-	if state == "" || code == "" {
-		return domain.ErrGoogleCalendarNotLinked
+	if state == "" {
+		return domain.CalendarOAuthResult{}, domain.ErrGoogleCalendarNotLinked
 	}
 
-	if err := s.completePublicGoogleCalendarOAuth(ctx, state, code); err == nil {
-		return nil
-	} else if !errors.Is(err, domain.ErrGoogleCalendarNotLinked) {
-		return err
+	appointmentID, err := s.tokenRepo.GetPublicOAuthState(ctx, state)
+	if err == nil {
+		return s.completePublicGoogleCalendarOAuth(ctx, state, appointmentID, code)
+	}
+	if !errors.Is(err, domain.ErrGoogleCalendarNotLinked) {
+		return domain.CalendarOAuthResult{}, err
 	}
 
 	userID, err := s.tokenRepo.GetOAuthState(ctx, state)
 	if err != nil {
-		return err
+		return domain.CalendarOAuthResult{}, err
 	}
 	defer func() {
 		_ = s.tokenRepo.DeleteOAuthState(ctx, state)
 	}()
 
-	token, err := s.exporter.Exchange(ctx, code)
-	if err != nil {
-		return err
+	if code == "" {
+		return domain.CalendarOAuthResult{}, domain.ErrGoogleCalendarNotLinked
 	}
 
-	return s.tokenRepo.SaveToken(ctx, userID, token)
+	token, err := s.exporter.Exchange(ctx, code)
+	if err != nil {
+		return domain.CalendarOAuthResult{}, err
+	}
+
+	return domain.CalendarOAuthResult{}, s.tokenRepo.SaveToken(ctx, userID, token)
 }
 
 func (s *BookingService) PublicGoogleCalendarAuthURL(
@@ -321,27 +363,39 @@ func (s *BookingService) PublicGoogleCalendarAuthURL(
 	return s.exporter.AuthCodeURL(state)
 }
 
-func (s *BookingService) completePublicGoogleCalendarOAuth(ctx context.Context, state, code string) error {
-	appointmentID, err := s.tokenRepo.GetPublicOAuthState(ctx, state)
-	if err != nil {
-		return err
-	}
+func (s *BookingService) completePublicGoogleCalendarOAuth(
+	ctx context.Context,
+	state string,
+	appointmentID int64,
+	code string,
+) (domain.CalendarOAuthResult, error) {
 	defer func() {
 		_ = s.tokenRepo.DeletePublicOAuthState(ctx, state)
 	}()
 
+	details, err := s.repoPostgres.GetAppointmentCalendarDetails(ctx, appointmentID)
+	if err != nil {
+		return domain.CalendarOAuthResult{}, err
+	}
+	result := domain.CalendarOAuthResult{RegistrationSlug: details.RegistrationSlug}
+
+	// Empty code means the user declined access on the Google consent screen.
+	if code == "" {
+		return result, domain.ErrGoogleCalendarNotLinked
+	}
+
 	token, err := s.exporter.Exchange(ctx, code)
 	if err != nil {
-		return err
+		return result, err
 	}
 
 	appointment, err := s.repoPostgres.GetAppointmentByID(ctx, appointmentID)
 	if err != nil {
-		return err
+		return result, err
 	}
 
 	_, _, err = s.exporter.ExportAppointment(ctx, token, &appointment)
-	return err
+	return result, err
 }
 
 func (s *BookingService) ExportAppointmentToGoogleCalendar(

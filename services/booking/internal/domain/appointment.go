@@ -64,6 +64,30 @@ type CreateAppointmentOutput struct {
 	Comment   *string
 
 	GoogleCalendarExportURL string
+	CalendarICSURL          string
+}
+
+// AppointmentCalendarDetails holds what is needed to describe an appointment as a calendar event.
+type AppointmentCalendarDetails struct {
+	AppointmentID    int64
+	RegistrationSlug string
+
+	ServiceName     string
+	EmployeeName    string
+	EmployeeSurname string
+	BranchName      string
+	BranchAddress   string
+	Timezone        string
+
+	StartTime time.Time
+	EndTime   time.Time
+	Comment   *string
+}
+
+// CalendarOAuthResult tells where to send the user after the Google OAuth callback.
+// RegistrationSlug is empty for the dashboard (non-public) flow.
+type CalendarOAuthResult struct {
+	RegistrationSlug string
 }
 
 type AvailableSlotsInput struct {

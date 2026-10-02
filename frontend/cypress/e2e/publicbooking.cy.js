@@ -38,8 +38,34 @@ describe('Public Booking Page: e2e testing', () => {
         .its('response.statusCode')
         .should('eq', 201);
 
+        cy.get('[data-cy="ics-download-button"]')
+        .should('have.attr', 'href')
+        .and('include', '/calendar.ics?token=')
+        .then((href) => {
+            cy.request(href).then((response) => {
+                expect(response.status).to.eq(200);
+                expect(response.headers['content-type']).to.include('text/calendar');
+                expect(response.body).to.include('BEGIN:VCALENDAR');
+            });
+        });
+
+        cy.get('[data-cy="google-calendar-link"]')
+        .should('have.attr', 'href')
+        .and('include', 'calendar.google.com/calendar/render?action=TEMPLATE');
+
+        // Without GOOGLE_* env the OAuth export is disabled, so its button must be hidden.
         cy.get('[data-cy="google-calendar-button"]')
-        .should('exist');
+        .should('not.exist');
+    });
+
+    it('should show the result of Google Calendar export after OAuth redirect', () => {
+        cy.visit('/public/demo-business?calendar=success');
+        cy.get('[data-cy="calendar-status"]')
+        .should('contain', 'Запись добавлена в ваш Google Календарь');
+
+        cy.visit('/public/demo-business?calendar=error');
+        cy.get('[data-cy="calendar-status"]')
+        .should('contain', 'Не удалось добавить запись в Google Календарь');
     });
 
     it('should validate required fields in data form', () => {

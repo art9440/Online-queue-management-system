@@ -7,19 +7,23 @@ import (
 	"Online-queue-management-system/services/booking/internal/application/service"
 	"Online-queue-management-system/services/booking/internal/domain"
 	"Online-queue-management-system/services/booking/internal/infrastructure/dto"
+	"Online-queue-management-system/services/booking/internal/infrastructure/ics"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 )
 
 type HttpServer struct {
-	svc *service.BookingService
+	svc         *service.BookingService
+	frontendURL string
 }
 
-func NewHttpServer(svc *service.BookingService) *HttpServer {
-	return &HttpServer{svc: svc}
+func NewHttpServer(svc *service.BookingService, frontendURL string) *HttpServer {
+	return &HttpServer{svc: svc, frontendURL: frontendURL}
 }
 
 func (s *HttpServer) CreatePublicAppointment(w http.ResponseWriter, r *http.Request) {
@@ -513,16 +517,53 @@ func (s *HttpServer) GoogleCalendarAuthURL(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusOK, dto.GoogleCalendarAuthResponse{URL: authURL})
 }
 
+// GoogleCalendarCallback is opened by the user's browser after the Google consent screen,
+// so it always redirects back to the frontend with ?calendar=success|error instead of returning JSON.
 func (s *HttpServer) GoogleCalendarCallback(w http.ResponseWriter, r *http.Request) {
 	state := r.URL.Query().Get("state")
 	code := r.URL.Query().Get("code")
 
-	if err := s.svc.CompleteGoogleCalendarOAuth(r.Context(), state, code); err != nil {
-		writeGoogleCalendarError(w, err)
+	result, err := s.svc.CompleteGoogleCalendarOAuth(r.Context(), state, code)
+
+	status := "success"
+	if err != nil {
+		status = "error"
+		logger.From(r.Context()).Warn("google calendar oauth callback failed", "err", err)
+	}
+
+	target := s.frontendURL + "/admin"
+	if result.RegistrationSlug != "" {
+		target = s.frontendURL + "/public/" + url.PathEscape(result.RegistrationSlug)
+	}
+
+	http.Redirect(w, r, target+"?calendar="+status, http.StatusFound)
+}
+
+// DownloadPublicAppointmentICS returns the appointment as an .ics file; access is granted by the export token.
+func (s *HttpServer) DownloadPublicAppointmentICS(w http.ResponseWriter, r *http.Request) {
+	appointmentID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || appointmentID <= 0 {
+		http.Error(w, domain.ErrInvalidAppointmentID.Error(), http.StatusBadRequest)
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	details, err := s.svc.GetPublicAppointmentCalendar(r.Context(), appointmentID, r.URL.Query().Get("token"))
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrCalendarExportNotFound),
+			errors.Is(err, domain.ErrAppointmentNotFound):
+			http.Error(w, domain.ErrCalendarExportNotFound.Error(), http.StatusNotFound)
+		default:
+			logger.From(r.Context()).Error("failed to build appointment calendar", "appointment_id", appointmentID, "err", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/calendar; charset=utf-8")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="appointment-%d.ics"`, appointmentID))
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write(ics.Build(&details, time.Now()))
 }
 
 func (s *HttpServer) PublicGoogleCalendarAuthURL(w http.ResponseWriter, r *http.Request) {

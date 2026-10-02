@@ -8,6 +8,7 @@ import (
 type BookingRepository interface {
 	GetAppointmentsByEmployeeID(ctx context.Context, employeeID int64) ([]domain.Appointment, error)
 	GetAppointmentByID(ctx context.Context, appointmentID int64) (domain.Appointment, error)
+	GetAppointmentCalendarDetails(ctx context.Context, appointmentID int64) (domain.AppointmentCalendarDetails, error)
 	CancelAppointment(ctx context.Context, appointmentID int64) error
 	GetAvailableSlots(ctx context.Context, input domain.AvailableSlotsInput) ([]domain.AvailableSlot, error)
 	CheckClientExists(ctx context.Context, client domain.ClientInput) (int64, bool, error)

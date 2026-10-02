@@ -53,11 +53,18 @@ func NewApp(
 
 	tokenRepo := redisrepo.NewCalendarTokenRepository(redisClient)
 	notificationRepo := redisrepo.NewAppointmentNotificationRepository(redisClient)
-	calendarExporter := googlecalendar.NewCalendarExporter(cfg.GoogleClientID, cfg.GoogleSecret, cfg.GoogleRedirect)
+	// Assign only a non-nil exporter: a typed nil pointer inside the interface would make
+	// the service think the Google Calendar integration is enabled.
+	var calendarExporter service.CalendarExporter
+	if exporter := googlecalendar.NewCalendarExporter(cfg.GoogleClientID, cfg.GoogleSecret, cfg.GoogleRedirect); exporter != nil {
+		calendarExporter = exporter
+	} else {
+		log.Info("google calendar oauth export is disabled: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET or GOOGLE_REDIRECT_URL is not set")
+	}
 
 	svc := service.New(repoPostgres, tokenRepo, calendarExporter, notificationRepo)
 
-	serverImpl := httpserver.NewHttpServer(svc)
+	serverImpl := httpserver.NewHttpServer(svc, cfg.FrontendURL)
 
 	parser := auth.NewTokenParser(cfg.JWTAccessSecret)
 
@@ -103,6 +110,11 @@ func NewApp(
 	mux.Handle(
 		"GET /public/appointments/{id}/google-calendar/auth-url",
 		http.HandlerFunc(serverImpl.PublicGoogleCalendarAuthURL),
+	)
+
+	mux.Handle(
+		"GET /public/appointments/{id}/calendar.ics",
+		http.HandlerFunc(serverImpl.DownloadPublicAppointmentICS),
 	)
 
 	mux.Handle(

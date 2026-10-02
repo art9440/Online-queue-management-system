@@ -81,6 +81,7 @@ type CreateAppointmentResponse struct {
 	Comment   *string `json:"comment,omitempty"`
 
 	GoogleCalendarExportURL string `json:"google_calendar_export_url,omitempty"`
+	CalendarICSURL          string `json:"ics_download_url,omitempty"`
 }
 
 type BranchResponse struct {
@@ -137,6 +138,7 @@ func CreateAppointmentResponseFromDomain(
 		Comment:   output.Comment,
 
 		GoogleCalendarExportURL: output.GoogleCalendarExportURL,
+		CalendarICSURL:          output.CalendarICSURL,
 	}
 }
 

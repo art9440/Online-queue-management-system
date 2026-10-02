@@ -254,9 +254,13 @@ start_time
   "start_time": "2026-05-18T09:00:00+07:00",
   "end_time": "2026-05-18T09:30:00+07:00",
   "status": "pending",
-  "comment": "First visit"
+  "comment": "First visit",
+  "ics_download_url": "/public/appointments/10/calendar.ics?token=...",
+  "google_calendar_export_url": "/public/appointments/10/google-calendar/auth-url?token=..."
 }
 ```
+
+`ics_download_url` возвращается всегда, `google_calendar_export_url` — только если настроен Google OAuth (см. раздел «Добавление записи в календарь»).
 
 Ошибки:
 
@@ -275,6 +279,30 @@ start_time
 ```
 
 `409 appointment is not available...` означает, что выбранная комбинация slug/филиал/услуга/мастер/время не прошла проверку. Например, услуга не принадлежит филиалу, мастер не работает в филиале, мастер не оказывает услугу, slug не принадлежит бизнесу филиала или время вне расписания.
+
+## 6. Добавление записи в календарь
+
+После создания записи на странице доступны три способа:
+
+1. **Скачать файл `.ics`** — `GET /public/appointments/{id}/calendar.ics?token=...` (ссылка из `ics_download_url`). Файл открывается в Google Календаре, Apple Calendar, Outlook. Ключи Google не нужны.
+2. **Открыть в Google Календаре** — ссылка вида `https://calendar.google.com/calendar/render?action=TEMPLATE&...` формируется на фронте и открывает форму нового события с заполненными полями. Ключи Google не нужны.
+3. **Сохранить в Google Календарь автоматически** — OAuth: пользователь входит в Google, событие создаётся в его календаре через Google Calendar API, после чего его возвращает на `/public/{registrationSlug}?calendar=success|error`. Кнопка показывается, только если заданы все `GOOGLE_*`.
+
+### Как включить Google OAuth
+
+1. Google Cloud Console → создать проект → **APIs & Services → Library** → включить **Google Calendar API**.
+2. **OAuth consent screen**: тип *External*, добавить scope `https://www.googleapis.com/auth/calendar.events`, в **Test users** добавить Google-аккаунты, которыми будете проверять (пока приложение не прошло верификацию, войти могут только они).
+3. **Credentials → Create credentials → OAuth client ID**, тип *Web application*, в **Authorized redirect URIs** добавить `http://localhost:8084/google-calendar/callback`.
+4. В `.env`:
+
+```env
+GOOGLE_CLIENT_ID=...apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_REDIRECT_URL=http://localhost:8084/google-calendar/callback
+FRONTEND_URL=http://localhost:5173
+```
+
+5. `docker compose up -d booking`. Если какой-то из `GOOGLE_*` не задан, booking пишет в лог `google calendar oauth export is disabled`, а кнопка автоматического сохранения скрыта.
 
 ## Совместимость
 

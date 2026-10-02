@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import {
     createPublicAppointment,
+    getBookingUrl,
     getGoogleOAuthUrl,
     getPublicBranches,
     getPublicEmployees,
@@ -75,8 +76,38 @@ const BackButton = ({ onClick }) => {
     );
 };
 
+const toGoogleCalendarDate = (value) => new Date(value).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+
+// Opens Google Calendar's "new event" form prefilled with the appointment; works without OAuth.
+const buildGoogleCalendarLink = (appointment, location) => {
+    const params = new URLSearchParams({
+        action: "TEMPLATE",
+        text: appointment.service.name,
+        dates: `${toGoogleCalendarDate(appointment.start_time)}/${toGoogleCalendarDate(appointment.end_time)}`,
+        details: `Мастер: ${appointment.employee.name} ${appointment.employee.surname}`,
+    });
+    if (location) {
+        params.set("location", location);
+    }
+
+    return `https://calendar.google.com/calendar/render?${params}`;
+};
+
+const calendarStatusMessages = {
+    success: {
+        text: "Запись добавлена в ваш Google Календарь.",
+        className: "bg-green-50 border-green-200 text-green-700",
+    },
+    error: {
+        text: "Не удалось добавить запись в Google Календарь. Попробуйте скачать файл .ics.",
+        className: "bg-red-50 border-red-200 text-red-700",
+    },
+};
+
 export const PublicBookingPage = () => {
     const { registrationSlug = "" } = useParams();
+    const [searchParams] = useSearchParams();
+    const calendarStatus = calendarStatusMessages[searchParams.get("calendar")];
 
     const [step, setStep] = useState("service");
     const [serviceId, setServiceId] = useState("");
@@ -298,13 +329,47 @@ export const PublicBookingPage = () => {
                         Создать еще одну запись
                     </Button>
 
-                    <Button
-                        data-cy="google-calendar-button"
-                        className="mt-4"
-                        onClick={handleGoogleCalendarExport}
-                    >
-                        Выгрузить в Google Календарь
-                    </Button>
+                    {fieldError.submit && (
+                        <div className="mt-5 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+                            {fieldError.submit}
+                        </div>
+                    )}
+
+                    <div className="mt-7 pt-5 border-t border-gray-100 space-y-3">
+                        <p className="text-sm font-medium text-gray-700">Добавить в календарь</p>
+
+                        {appointment.ics_download_url && (
+                            <a
+                                data-cy="ics-download-button"
+                                href={getBookingUrl(appointment.ics_download_url)}
+                                download
+                                className="block w-full p-3 rounded-md transition font-medium text-center border border-gray-300 hover:bg-gray-50 text-gray-700 bg-white"
+                            >
+                                Скачать файл .ics
+                            </a>
+                        )}
+
+                        <a
+                            data-cy="google-calendar-link"
+                            href={buildGoogleCalendarLink(appointment, selectedBranch?.address)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block w-full p-3 rounded-md transition font-medium text-center border border-gray-300 hover:bg-gray-50 text-gray-700 bg-white"
+                        >
+                            Открыть в Google Календаре
+                        </a>
+
+                        {appointment.google_calendar_export_url && (
+                            <Button
+                                data-cy="google-calendar-button"
+                                variant="outline"
+                                loading={googleCalendarExportMutation.isPending}
+                                onClick={handleGoogleCalendarExport}
+                            >
+                                Сохранить в Google Календарь автоматически
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </div>
         );
@@ -318,6 +383,15 @@ export const PublicBookingPage = () => {
                     <h1 className="text-gray-800 text-2xl font-bold">Онлайн-запись</h1>
                     <p className="text-gray-500 text-sm mt-2">{stepTitles[step]}</p>
                 </div>
+
+                {calendarStatus && (
+                    <div
+                        data-cy="calendar-status"
+                        className={`mb-5 p-4 border rounded-xl text-sm ${calendarStatus.className}`}
+                    >
+                        {calendarStatus.text}
+                    </div>
+                )}
 
                 {(pageError || fieldError.submit) && (
                     <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">

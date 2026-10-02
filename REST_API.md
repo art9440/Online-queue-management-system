@@ -679,9 +679,13 @@ Response `201 Created`:
   "start_time": "2026-05-18T09:00:00+07:00",
   "end_time": "2026-05-18T09:30:00+07:00",
   "status": "pending",
-  "comment": "First visit"
+  "comment": "First visit",
+  "ics_download_url": "/public/appointments/10/calendar.ics?token=...",
+  "google_calendar_export_url": "/public/appointments/10/google-calendar/auth-url?token=..."
 }
 ```
+
+`ics_download_url` is always returned. `google_calendar_export_url` is returned only when Google OAuth is configured (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URL`). Both use the same export token (Redis, TTL 7 days).
 
 Errors:
 
@@ -818,19 +822,24 @@ Errors:
 
 ### `GET /google-calendar/callback?state=...&code=...`
 
-Public callback endpoint for Google OAuth.
+Public callback endpoint for Google OAuth. It is opened by the user's browser, so it always redirects back to the frontend (`FRONTEND_URL`):
 
-Response:
+- public flow → `302` to `{FRONTEND_URL}/public/{registrationSlug}?calendar=success|error`;
+- dashboard flow or unknown state → `302` to `{FRONTEND_URL}/admin?calendar=success|error`.
 
-```text
-204 No Content
-```
+`calendar=error` covers a declined consent screen, an expired state, a disabled integration and Google API errors (details are logged).
+
+### `GET /public/appointments/{id}/calendar.ics?token=...`
+
+Public endpoint. Returns the appointment as an iCalendar file (RFC 5545) that can be imported into Google Calendar, Apple Calendar or Outlook. Works without Google OAuth settings. Access is granted by the export token from `ics_download_url`.
+
+Response `200 OK`: `Content-Type: text/calendar; charset=utf-8`, `Content-Disposition: attachment; filename="appointment-{id}.ics"`. The event contains the service name, branch name and address, employee, comment and a reminder one hour before the start.
 
 Errors:
 
-- `409` missing state/code or Google Calendar not linked
-- `503` Google Calendar integration disabled
-- `500` Redis/Google/internal error
+- `400` invalid appointment id
+- `404` missing, unknown or foreign token
+- `500` repository/internal error
 
 ### `POST /appointments/{id}/google-calendar`
 
@@ -973,7 +982,10 @@ Booking Google Calendar:
 | --- | --- |
 | `GOOGLE_CLIENT_ID` | optional; empty value makes auth URL/export fail at runtime |
 | `GOOGLE_CLIENT_SECRET` | optional; empty value makes OAuth exchange/export fail at runtime |
-| `GOOGLE_REDIRECT_URL` | optional; should match Google OAuth settings |
+| `GOOGLE_REDIRECT_URL` | optional; should match Google OAuth settings, e.g. `http://localhost:8084/google-calendar/callback` |
+| `FRONTEND_URL` | optional, default `http://localhost:5173`; where the OAuth callback redirects the user |
+
+If any of `GOOGLE_*` is empty, OAuth export is disabled: `google_calendar_export_url` is not returned, while `.ics` download keeps working.
 
 Bot and scheduler:
 
