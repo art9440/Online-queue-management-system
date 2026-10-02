@@ -2,7 +2,6 @@ package main
 
 import (
 	"Online-queue-management-system/libs/logger"
-	"Online-queue-management-system/libs/tracing"
 	"Online-queue-management-system/services/scheduler/config"
 	"Online-queue-management-system/services/scheduler/internal/infrastructure/app"
 	"context"
@@ -19,7 +18,7 @@ func main() {
 func runMain() int {
 	log := logger.New(logger.Config{
 		Level:  slog.LevelInfo,
-		JSON:   false,
+		JSON:   true,
 		Source: true,
 	})
 
@@ -29,8 +28,6 @@ func runMain() int {
 	defer stop()
 
 	ctx = logger.With(ctx, log)
-	shutdownTracing := tracing.InitFromEnv(ctx, "scheduler", log)
-	defer shutdownTracing()
 
 	if err := run(ctx); err != nil {
 		slog.Error("scheduler stopped with error", "err", err)

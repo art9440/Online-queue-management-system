@@ -4,7 +4,6 @@ import (
 	"Online-queue-management-system/libs/auth"
 	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/logger"
-	"Online-queue-management-system/libs/metrics"
 	"Online-queue-management-system/libs/middleware"
 	"Online-queue-management-system/libs/redisclient"
 	"Online-queue-management-system/services/booking/config"
@@ -126,13 +125,12 @@ func NewApp(
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	mux.Handle("GET /metrics", metrics.Handler())
 
 	corsMux := middleware.CORSMiddleware(libconfig.LoadCORSAllowedOrigins(ctx), mux)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.BookingPort,
-		Handler: middleware.TraceRequests(metrics.Middleware("booking")(middleware.RequestLogger(corsMux))),
+		Handler: middleware.RequestLogger(corsMux),
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
 		},

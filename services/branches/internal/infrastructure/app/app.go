@@ -4,7 +4,6 @@ import (
 	"Online-queue-management-system/libs/auth"
 	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/logger"
-	"Online-queue-management-system/libs/metrics"
 	"Online-queue-management-system/libs/middleware"
 	branchesConfig "Online-queue-management-system/services/branches/config"
 	"Online-queue-management-system/services/branches/internal/application/service"
@@ -64,13 +63,12 @@ func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg *libconfig.DBC
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	mux.Handle("/metrics", metrics.Handler())
 
 	CorsMux := middleware.CORSMiddleware(libconfig.LoadCORSAllowedOrigins(ctx), mux)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.BranchesCfg.BranchesPort,
-		Handler: middleware.TraceRequests(metrics.Middleware("branches")(middleware.RequestLogger(CorsMux))),
+		Handler: middleware.RequestLogger(CorsMux),
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
 		},

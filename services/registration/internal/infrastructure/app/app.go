@@ -4,7 +4,6 @@ import (
 	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/email"
 	"Online-queue-management-system/libs/logger"
-	"Online-queue-management-system/libs/metrics"
 	"Online-queue-management-system/libs/middleware"
 	"Online-queue-management-system/libs/redisclient"
 	"Online-queue-management-system/services/registration/config"
@@ -59,7 +58,6 @@ func NewApp(ctx context.Context, cfg *config.Config, dbCfg *libconfig.DBConfig) 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	mux.Handle("/metrics", metrics.Handler())
 	// для теста
 	mux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("pong"))
@@ -69,7 +67,7 @@ func NewApp(ctx context.Context, cfg *config.Config, dbCfg *libconfig.DBConfig) 
 
 	httpServer := &http.Server{
 		Addr:    ":" + cfg.RegCfg.RegistrationPort,
-		Handler: middleware.TraceRequests(metrics.Middleware("registration")(middleware.RequestLogger(handler))),
+		Handler: middleware.RequestLogger(handler),
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
 		},

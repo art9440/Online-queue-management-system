@@ -146,9 +146,6 @@ frontend/.vite/
 frontend/node_modules/
 frontend/dist/
 
-# Elastic / Logstash data (если локально)
-observability/elk/elastic-data/
-
 # Cypress (E2E тесты)
 frontend/cypress.env.json
 cypress.env.json

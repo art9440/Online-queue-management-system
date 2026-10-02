@@ -3,7 +3,6 @@ package app
 import (
 	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/logger"
-	"Online-queue-management-system/libs/metrics"
 	"Online-queue-management-system/libs/middleware"
 	"Online-queue-management-system/libs/redisclient"
 	"Online-queue-management-system/services/bot/config"
@@ -55,12 +54,11 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	serverImpl := httpserver.New(bot, enabled)
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", serverImpl.Health)
-	mux.Handle("GET /metrics", metrics.Handler())
 	mux.HandleFunc("POST /telegram/notifications", serverImpl.SendNotification)
 
 	httpServer := &http.Server{
 		Addr:    ":" + cfg.BotPort,
-		Handler: middleware.TraceRequests(metrics.Middleware("bot")(middleware.RequestLogger(middleware.CORSMiddleware(libconfig.LoadCORSAllowedOrigins(ctx), mux)))),
+		Handler: middleware.RequestLogger(middleware.CORSMiddleware(libconfig.LoadCORSAllowedOrigins(ctx), mux)),
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
 		},

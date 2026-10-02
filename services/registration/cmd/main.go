@@ -3,7 +3,6 @@ package main
 import (
 	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/logger"
-	"Online-queue-management-system/libs/tracing"
 	"Online-queue-management-system/services/registration/config"
 	"Online-queue-management-system/services/registration/internal/infrastructure/app"
 	"context"
@@ -20,7 +19,7 @@ func main() {
 func runMain() int {
 	log := logger.New(logger.Config{
 		Level:  slog.LevelInfo,
-		JSON:   false,
+		JSON:   true,
 		Source: true,
 	})
 
@@ -30,8 +29,6 @@ func runMain() int {
 	defer stop()
 
 	ctx = logger.With(ctx, log)
-	shutdownTracing := tracing.InitFromEnv(ctx, "registration", log)
-	defer shutdownTracing()
 
 	if err := run(ctx); err != nil {
 		slog.Error("something went wrong while running registration service", "err", err)

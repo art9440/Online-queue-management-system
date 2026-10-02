@@ -69,9 +69,6 @@ services:
       - .env
     environment:
       SERVICE_NAME: auth
-      LOGSTASH_TCP_ADDR: logstash:5045
-      OTEL_SERVICE_NAME: auth
-      OTEL_EXPORTER_OTLP_ENDPOINT: jaeger:4317
     networks:
       - online_queue_network
 
@@ -91,9 +88,6 @@ services:
       - .env
     environment:
       SERVICE_NAME: registration
-      LOGSTASH_TCP_ADDR: logstash:5045
-      OTEL_SERVICE_NAME: registration
-      OTEL_EXPORTER_OTLP_ENDPOINT: jaeger:4317
     networks:
       - online_queue_network
 
@@ -111,9 +105,6 @@ services:
       - .env
     environment:
       SERVICE_NAME: branches
-      LOGSTASH_TCP_ADDR: logstash:5045
-      OTEL_SERVICE_NAME: branches
-      OTEL_EXPORTER_OTLP_ENDPOINT: jaeger:4317
     networks:
       - online_queue_network
 
@@ -133,9 +124,6 @@ services:
       - .env
     environment:
       SERVICE_NAME: booking
-      LOGSTASH_TCP_ADDR: logstash:5045
-      OTEL_SERVICE_NAME: booking
-      OTEL_EXPORTER_OTLP_ENDPOINT: jaeger:4317
     networks:
       - online_queue_network
 
@@ -153,9 +141,6 @@ services:
       - .env
     environment:
       SERVICE_NAME: scheduler
-      LOGSTASH_TCP_ADDR: logstash:5045
-      OTEL_SERVICE_NAME: scheduler
-      OTEL_EXPORTER_OTLP_ENDPOINT: jaeger:4317
     networks:
       - online_queue_network
 
@@ -173,9 +158,6 @@ services:
       - .env
     environment:
       SERVICE_NAME: bot
-      LOGSTASH_TCP_ADDR: logstash:5045
-      OTEL_SERVICE_NAME: bot
-      OTEL_EXPORTER_OTLP_ENDPOINT: jaeger:4317
     networks:
       - online_queue_network
 
