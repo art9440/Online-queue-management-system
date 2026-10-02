@@ -12,9 +12,36 @@ import (
 )
 
 const (
-	scheduledNotificationsKey = "notifications:scheduled"
-	notificationKeyPrefix     = "notification:"
+	scheduledNotificationsKey  = "notifications:scheduled"
+	processingNotificationsKey = "notifications:processing"
+	notificationKeyPrefix      = "notification:"
+
+	// Sent and failed notifications are kept for inspection, then expire.
+	finishedNotificationTTL = 7 * 24 * time.Hour
 )
+
+// claimDueScript atomically moves due notifications from the schedule to the processing set,
+// scored by the lease deadline. Several scheduler replicas never get the same notification,
+// and a notification is never "in flight" outside Redis (12-factor VI, VIII).
+var claimDueScript = goredis.NewScript(`
+local ids = redis.call('ZRANGEBYSCORE', KEYS[1], '-inf', ARGV[1], 'LIMIT', 0, tonumber(ARGV[2]))
+for _, id in ipairs(ids) do
+	redis.call('ZREM', KEYS[1], id)
+	redis.call('ZADD', KEYS[2], ARGV[3], id)
+end
+return ids
+`)
+
+// requeueExpiredScript returns notifications whose lease has expired (their scheduler died)
+// back to the schedule, due immediately.
+var requeueExpiredScript = goredis.NewScript(`
+local ids = redis.call('ZRANGEBYSCORE', KEYS[1], '-inf', ARGV[1])
+for _, id in ipairs(ids) do
+	redis.call('ZREM', KEYS[1], id)
+	redis.call('ZADD', KEYS[2], ARGV[1], id)
+end
+return #ids
+`)
 
 type NotificationRepository struct {
 	client *goredis.Client
@@ -36,6 +63,7 @@ type notificationPayload struct {
 	Body        string `json:"body"`
 	HTMLBody    string `json:"html_body"`
 	Status      string `json:"status"`
+	Attempts    int    `json:"attempts,omitempty"`
 	SentAt      string `json:"sent_at,omitempty"`
 	FailedAt    string `json:"failed_at,omitempty"`
 	FailReason  string `json:"fail_reason,omitempty"`
@@ -45,20 +73,21 @@ func NewNotificationRepository(client *goredis.Client) *NotificationRepository {
 	return &NotificationRepository{client: client}
 }
 
-func (r *NotificationRepository) FetchDueByChannel(
+// ClaimDue takes up to limit due notifications for this scheduler until leaseUntil.
+func (r *NotificationRepository) ClaimDue(
 	ctx context.Context,
 	now time.Time,
-	channel string,
 	limit int64,
+	leaseUntil time.Time,
 ) ([]service.Notification, error) {
-	ids, err := r.client.ZRangeArgs(ctx, goredis.ZRangeArgs{
-		Key:     scheduledNotificationsKey,
-		Start:   "-inf",
-		Stop:    timestampScore(now),
-		ByScore: true,
-		Offset:  0,
-		Count:   limit,
-	}).Result()
+	ids, err := claimDueScript.Run(
+		ctx,
+		r.client,
+		[]string{scheduledNotificationsKey, processingNotificationsKey},
+		timestampScore(now),
+		limit,
+		timestampScore(leaseUntil),
+	).StringSlice()
 	if err != nil {
 		return nil, err
 	}
@@ -66,30 +95,43 @@ func (r *NotificationRepository) FetchDueByChannel(
 	notifications := make([]service.Notification, 0, len(ids))
 	for _, id := range ids {
 		notification, err := r.getNotification(ctx, id)
-		if err != nil {
-			if errors.Is(err, goredis.Nil) {
-				_ = r.client.ZRem(ctx, scheduledNotificationsKey, id).Err()
-				continue
-			}
-			return nil, err
-		}
-
-		if notification.Channel != channel {
+		if errors.Is(err, goredis.Nil) {
+			// Payload is gone: nothing to send.
+			_ = r.client.ZRem(ctx, processingNotificationsKey, id).Err()
 			continue
 		}
-
-		removed, err := r.client.ZRem(ctx, scheduledNotificationsKey, id).Result()
 		if err != nil {
 			return nil, err
 		}
-		if removed == 0 {
-			continue
-		}
-
 		notifications = append(notifications, notification)
 	}
 
 	return notifications, nil
+}
+
+// RequeueExpired returns notifications with an expired lease to the schedule.
+func (r *NotificationRepository) RequeueExpired(ctx context.Context, now time.Time) (int64, error) {
+	return requeueExpiredScript.Run(
+		ctx,
+		r.client,
+		[]string{processingNotificationsKey, scheduledNotificationsKey},
+		timestampScore(now),
+	).Int64()
+}
+
+// Release gives claimed but unprocessed notifications back to the schedule, due at the given time.
+func (r *NotificationRepository) Release(ctx context.Context, ids []string, at time.Time) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	_, err := r.client.TxPipelined(ctx, func(pipe goredis.Pipeliner) error {
+		for _, id := range ids {
+			pipe.ZRem(ctx, processingNotificationsKey, id)
+			pipe.ZAdd(ctx, scheduledNotificationsKey, goredis.Z{Score: float64(at.UTC().Unix()), Member: id})
+		}
+		return nil
+	})
+	return err
 }
 
 func (r *NotificationRepository) MarkSent(ctx context.Context, notificationID string, sentAt time.Time) error {
@@ -103,7 +145,7 @@ func (r *NotificationRepository) MarkSent(ctx context.Context, notificationID st
 	payload.FailedAt = ""
 	payload.FailReason = ""
 
-	return r.savePayload(ctx, &payload)
+	return r.finish(ctx, &payload)
 }
 
 func (r *NotificationRepository) MarkFailed(ctx context.Context, notificationID string, failedAt time.Time, reason string) error {
@@ -113,10 +155,52 @@ func (r *NotificationRepository) MarkFailed(ctx context.Context, notificationID 
 	}
 
 	payload.Status = "failed"
+	payload.Attempts++
 	payload.FailedAt = failedAt.UTC().Format(time.RFC3339)
 	payload.FailReason = reason
 
-	return r.savePayload(ctx, &payload)
+	return r.finish(ctx, &payload)
+}
+
+// Retry schedules another attempt at retryAt and records the failure.
+func (r *NotificationRepository) Retry(ctx context.Context, notificationID string, retryAt time.Time, reason string) error {
+	payload, err := r.getPayload(ctx, notificationID)
+	if err != nil {
+		return err
+	}
+
+	payload.Status = "retrying"
+	payload.Attempts++
+	payload.FailedAt = time.Now().UTC().Format(time.RFC3339)
+	payload.FailReason = reason
+
+	raw, err := json.Marshal(&payload)
+	if err != nil {
+		return err
+	}
+
+	_, err = r.client.TxPipelined(ctx, func(pipe goredis.Pipeliner) error {
+		pipe.Set(ctx, notificationKey(payload.ID), raw, 0)
+		pipe.ZRem(ctx, processingNotificationsKey, payload.ID)
+		pipe.ZAdd(ctx, scheduledNotificationsKey, goredis.Z{Score: float64(retryAt.UTC().Unix()), Member: payload.ID})
+		return nil
+	})
+	return err
+}
+
+// finish stores the final status and removes the notification from processing.
+func (r *NotificationRepository) finish(ctx context.Context, payload *notificationPayload) error {
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	_, err = r.client.TxPipelined(ctx, func(pipe goredis.Pipeliner) error {
+		pipe.Set(ctx, notificationKey(payload.ID), raw, finishedNotificationTTL)
+		pipe.ZRem(ctx, processingNotificationsKey, payload.ID)
+		return nil
+	})
+	return err
 }
 
 func (r *NotificationRepository) getNotification(ctx context.Context, id string) (service.Notification, error) {
@@ -145,6 +229,7 @@ func (r *NotificationRepository) getNotification(ctx context.Context, id string)
 		Subject:     payload.Subject,
 		Body:        payload.Body,
 		HTMLBody:    payload.HTMLBody,
+		Attempts:    payload.Attempts,
 	}, nil
 }
 
@@ -163,15 +248,6 @@ func (r *NotificationRepository) getPayload(ctx context.Context, id string) (not
 	}
 
 	return payload, nil
-}
-
-func (r *NotificationRepository) savePayload(ctx context.Context, payload *notificationPayload) error {
-	raw, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-
-	return r.client.Set(ctx, notificationKey(payload.ID), raw, 0).Err()
 }
 
 func parseStartTime(value string) (time.Time, error) {
