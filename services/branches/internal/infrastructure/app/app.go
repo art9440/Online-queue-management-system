@@ -66,7 +66,7 @@ func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg *libconfig.DBC
 	})
 	mux.Handle("/metrics", metrics.Handler())
 
-	CorsMux := middleware.CORSMiddleware(mux)
+	CorsMux := middleware.CORSMiddleware(libconfig.LoadCORSAllowedOrigins(ctx), mux)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.BranchesCfg.BranchesPort,

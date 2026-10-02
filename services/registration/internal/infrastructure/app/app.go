@@ -65,7 +65,7 @@ func NewApp(ctx context.Context, cfg *config.Config, dbCfg *libconfig.DBConfig) 
 		_, _ = w.Write([]byte("pong"))
 	})
 
-	handler := middleware.CORSMiddleware(mux)
+	handler := middleware.CORSMiddleware(libconfig.LoadCORSAllowedOrigins(ctx), mux)
 
 	httpServer := &http.Server{
 		Addr:    ":" + cfg.RegCfg.RegistrationPort,

@@ -73,7 +73,7 @@ func New(ctx context.Context) (*App, error) {
 	})
 	mux.Handle("/metrics", metrics.Handler())
 
-	CorsMux := middleware.CORSMiddleware(mux)
+	CorsMux := middleware.CORSMiddleware(libconfig.LoadCORSAllowedOrigins(ctx), mux)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.AuthPort,

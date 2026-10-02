@@ -121,7 +121,7 @@ func NewApp(
 	})
 	mux.Handle("GET /metrics", metrics.Handler())
 
-	corsMux := middleware.CORSMiddleware(mux)
+	corsMux := middleware.CORSMiddleware(libconfig.LoadCORSAllowedOrigins(ctx), mux)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.BookingPort,

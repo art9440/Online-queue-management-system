@@ -1,6 +1,7 @@
 package app
 
 import (
+	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/logger"
 	"Online-queue-management-system/libs/metrics"
 	"Online-queue-management-system/libs/middleware"
@@ -59,7 +60,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 
 	httpServer := &http.Server{
 		Addr:    ":" + cfg.BotPort,
-		Handler: middleware.TraceRequests(metrics.Middleware("bot")(middleware.RequestLogger(middleware.CORSMiddleware(mux)))),
+		Handler: middleware.TraceRequests(metrics.Middleware("bot")(middleware.RequestLogger(middleware.CORSMiddleware(libconfig.LoadCORSAllowedOrigins(ctx), mux)))),
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
 		},
