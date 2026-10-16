@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-config
+  namespace: oqms
+data:
+  AUTH_URL: http://oqms.local
+  REGISTRATION_URL: http://oqms.local/api/registration
+  BRANCHES_URL: http://oqms.local/api/branches
+  BOOKING_URL: http://oqms.local/api/booking
