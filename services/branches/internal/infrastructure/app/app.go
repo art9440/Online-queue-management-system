@@ -32,12 +32,14 @@ func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg *libconfig.DBC
 	svc := service.New(repoPostgres)
 
 	serverImpl := httpserver.NewHttpServer(svc)
-	log.Info("JWT secret", "secret", cfg.BranchesCfg.JWTAccessSecret)
 	parser := auth.NewTokenParser(cfg.BranchesCfg.JWTAccessSecret)
 	mux := http.NewServeMux()
 
 	authMiddleware := auth.Middleware(parser)
 
+	mux.Handle("GET /branches", authMiddleware(http.HandlerFunc(serverImpl.GetBranches)))
+	mux.Handle("GET /branches/{id}/clients", authMiddleware(http.HandlerFunc(serverImpl.GetBranchClients)))
+	mux.Handle("GET /branches/{id}/bookings", authMiddleware(http.HandlerFunc(serverImpl.GetBranchAppointments)))
 	mux.Handle("/branches", authMiddleware(http.HandlerFunc(serverImpl.GetBranches)))
 	mux.Handle("/branches/{id}/employees",
 		authMiddleware(http.HandlerFunc(serverImpl.GetBranchEmployees)))
@@ -47,6 +49,8 @@ func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg *libconfig.DBC
 		authMiddleware(http.HandlerFunc(serverImpl.GetBranchesWithService)))
 	mux.Handle("/services/{serviceId}/branches/{branchId}/employees",
 		authMiddleware(http.HandlerFunc(serverImpl.GetEmployeesForService)))
+	mux.Handle("GET /businesses/{id}/registration-slug",
+		authMiddleware(http.HandlerFunc(serverImpl.GetBusinessRegistrationSlug)))
 
 	// Public endpoints - no authentication required
 	mux.Handle("/public/{registrationSlug}/services",
@@ -60,7 +64,7 @@ func NewApp(ctx context.Context, cfg branchesConfig.Config, dbCfg *libconfig.DBC
 		w.WriteHeader(http.StatusOK)
 	})
 
-	CorsMux := middleware.CORSMiddleware(mux)
+	CorsMux := middleware.CORSMiddleware(libconfig.LoadCORSAllowedOrigins(ctx), mux)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.BranchesCfg.BranchesPort,

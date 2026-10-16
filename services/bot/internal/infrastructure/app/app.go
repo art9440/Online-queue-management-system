@@ -1,6 +1,7 @@
 package app
 
 import (
+	libconfig "Online-queue-management-system/libs/config"
 	"Online-queue-management-system/libs/logger"
 	"Online-queue-management-system/libs/middleware"
 	"Online-queue-management-system/libs/redisclient"
@@ -13,9 +14,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
+	"os"
 	"time"
 
+	"github.com/google/uuid"
 	goredis "github.com/redis/go-redis/v9"
 )
 
@@ -43,7 +47,9 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	if enabled {
 		telegramClient := telegram.NewClient(cfg.TelegramToken)
 		bot = service.New(repo, telegramClient)
-		poller = polling.New(telegramClient, bot, cfg.PollingTimeout, cfg.PollingInterval)
+		lock := redisrepo.NewLeaderLock(rdb, instanceID(), pollerLockTTL)
+		offsets := redisrepo.NewOffsetStore(rdb)
+		poller = polling.New(telegramClient, bot, lock, offsets, cfg.PollingTimeout, cfg.PollingInterval, pollerLockTTL)
 	} else {
 		bot = service.New(repo, nil)
 		log.Warn("telegram bot token is not set, bot polling and sending are disabled")
@@ -55,8 +61,11 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	mux.HandleFunc("POST /telegram/notifications", serverImpl.SendNotification)
 
 	httpServer := &http.Server{
-		Addr:              ":" + cfg.BotPort,
-		Handler:           middleware.RequestLogger(middleware.CORSMiddleware(mux)),
+		Addr:    ":" + cfg.BotPort,
+		Handler: middleware.RequestLogger(middleware.CORSMiddleware(libconfig.LoadCORSAllowedOrigins(ctx), mux)),
+		BaseContext: func(_ net.Listener) context.Context {
+			return ctx
+		},
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
@@ -74,8 +83,14 @@ func (a *App) Run(ctx context.Context) error {
 
 	errCh := make(chan error, 1)
 
+	pollerDone := make(chan struct{})
 	if a.poller != nil {
-		go a.poller.Run(ctx)
+		go func() {
+			defer close(pollerDone)
+			a.poller.Run(ctx)
+		}()
+	} else {
+		close(pollerDone)
 	}
 
 	go func() {
@@ -98,6 +113,14 @@ func (a *App) Run(ctx context.Context) error {
 		return fmt.Errorf("shutdown telegram bot http server: %w", err)
 	}
 
+	// Wait for the poller to release the leader lock, so another replica takes over at once
+	// instead of waiting for the lock TTL (12-factor IX).
+	select {
+	case <-pollerDone:
+	case <-shutdownCtx.Done():
+		log.Warn("telegram poller did not stop in time")
+	}
+
 	log.Info("telegram bot service stopped")
 	return nil
 }
@@ -106,4 +129,16 @@ func (a *App) Close() {
 	if a.redis != nil {
 		_ = a.redis.Close()
 	}
+}
+
+// pollerLockTTL: if the polling replica dies, another one takes over within this time.
+const pollerLockTTL = 30 * time.Second
+
+// instanceID identifies this replica as the owner of the poller lock.
+func instanceID() string {
+	host, err := os.Hostname()
+	if err != nil || host == "" {
+		host = "bot"
+	}
+	return host + "-" + uuid.NewString()[:8]
 }

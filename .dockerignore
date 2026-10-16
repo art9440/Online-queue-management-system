@@ -1,0 +1,19 @@
+# Keep build contexts small and free of secrets (12-factor II/III).
+.git
+.vscode
+.idea
+bin
+docs
+*.md
+
+.env
+.env.*
+!.env.example
+
+frontend/node_modules
+frontend/dist
+frontend/.vite
+
+coverage.out
+*.test
+*.log

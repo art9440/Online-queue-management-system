@@ -10,6 +10,9 @@ const (
 	defaultPollInterval = 30 * time.Second
 	defaultBatchSize    = 100
 	defaultBotURL       = "http://bot:8085"
+	defaultLease        = 5 * time.Minute
+	defaultMaxAttempts  = 5
+	defaultRetryDelay   = time.Minute
 )
 
 type Config struct {
@@ -18,6 +21,9 @@ type Config struct {
 	PollInterval   time.Duration
 	BatchSize      int
 	BotURL         string
+	Lease          time.Duration
+	MaxAttempts    int
+	RetryDelay     time.Duration
 }
 
 func LoadConfig(ctx context.Context) (*Config, error) {
@@ -72,5 +78,8 @@ func LoadConfig(ctx context.Context) (*Config, error) {
 		PollInterval: libconfig.GetDurationDefault(ctx, "SCHEDULER_POLL_INTERVAL", defaultPollInterval),
 		BatchSize:    libconfig.GetIntDefault(ctx, "SCHEDULER_BATCH_SIZE", defaultBatchSize),
 		BotURL:       libconfig.Get(ctx, "BOT_URL", defaultBotURL),
+		Lease:        libconfig.GetDurationDefault(ctx, "SCHEDULER_LEASE", defaultLease),
+		MaxAttempts:  libconfig.GetIntDefault(ctx, "SCHEDULER_MAX_ATTEMPTS", defaultMaxAttempts),
+		RetryDelay:   libconfig.GetDurationDefault(ctx, "SCHEDULER_RETRY_DELAY", defaultRetryDelay),
 	}, nil
 }

@@ -8,6 +8,7 @@ import (
 type BookingRepository interface {
 	GetAppointmentsByEmployeeID(ctx context.Context, employeeID int64) ([]domain.Appointment, error)
 	GetAppointmentByID(ctx context.Context, appointmentID int64) (domain.Appointment, error)
+	GetAppointmentCalendarDetails(ctx context.Context, appointmentID int64) (domain.AppointmentCalendarDetails, error)
 	CancelAppointment(ctx context.Context, appointmentID int64) error
 	GetAvailableSlots(ctx context.Context, input domain.AvailableSlotsInput) ([]domain.AvailableSlot, error)
 	CheckClientExists(ctx context.Context, client domain.ClientInput) (int64, bool, error)
@@ -21,6 +22,11 @@ type CalendarTokenRepository interface {
 	DeleteOAuthState(ctx context.Context, state string) error
 	SaveToken(ctx context.Context, userID int64, token domain.GoogleCalendarToken) error
 	GetToken(ctx context.Context, userID int64) (domain.GoogleCalendarToken, error)
+	SavePublicExportToken(ctx context.Context, token string, appointmentID int64) error
+	GetPublicExportToken(ctx context.Context, token string) (int64, error)
+	SavePublicOAuthState(ctx context.Context, state string, appointmentID int64) error
+	GetPublicOAuthState(ctx context.Context, state string) (int64, error)
+	DeletePublicOAuthState(ctx context.Context, state string) error
 }
 
 type CalendarExporter interface {

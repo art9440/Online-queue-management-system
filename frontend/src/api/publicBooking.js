@@ -42,6 +42,15 @@ export const getPublicSlots = ({ registrationSlug, serviceId, branchId, employee
     ));
 };
 
+export const getBookingUrl = (path) => new URL(path, bookingApi.defaults.baseURL).toString();
+
+export const getGoogleOAuthUrl = (googleCalendarExportUrl) => {
+    return request(() => bookingApi.get(
+        `${googleCalendarExportUrl}`,
+        { withCredentials: true }
+    ));
+};
+
 export const createPublicAppointment = ({ registrationSlug, payload }) => {
     return request(() => bookingApi.post(`/public/${registrationSlug}/appointments`, payload));
 };

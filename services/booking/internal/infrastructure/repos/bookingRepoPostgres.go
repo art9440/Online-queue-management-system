@@ -128,6 +128,57 @@ func (r *BookingRepoPostgres) GetAppointmentByID(ctx context.Context, appointmen
 	return appointment, nil
 }
 
+func (r *BookingRepoPostgres) GetAppointmentCalendarDetails(
+	ctx context.Context,
+	appointmentID int64,
+) (domain.AppointmentCalendarDetails, error) {
+	const query = `
+		SELECT
+			a.id,
+			COALESCE(bu.registration_slug, ''),
+			s.name,
+			e.name,
+			e.surname,
+			b.name,
+			b.address,
+			b.timezone,
+			a.start_time,
+			a.end_time,
+			a.comment
+		FROM appointments a
+		JOIN branches b ON b.id = a.branch_id
+		JOIN businesses bu ON bu.id = b.business_id
+		JOIN services s ON s.id = a.service_id
+		JOIN employees e ON e.id = a.employee_id
+		WHERE a.id = $1
+	`
+
+	var details domain.AppointmentCalendarDetails
+
+	err := r.db.QueryRowContext(ctx, query, appointmentID).Scan(
+		&details.AppointmentID,
+		&details.RegistrationSlug,
+		&details.ServiceName,
+		&details.EmployeeName,
+		&details.EmployeeSurname,
+		&details.BranchName,
+		&details.BranchAddress,
+		&details.Timezone,
+		&details.StartTime,
+		&details.EndTime,
+		&details.Comment,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.AppointmentCalendarDetails{}, domain.ErrAppointmentNotFound
+		}
+
+		return domain.AppointmentCalendarDetails{}, fmt.Errorf("query appointment calendar details: %w", err)
+	}
+
+	return details, nil
+}
+
 func (r *BookingRepoPostgres) CancelAppointment(ctx context.Context, appointmentID int64) error {
 	const query = `
 		UPDATE appointments
@@ -373,7 +424,7 @@ func (r *BookingRepoPostgres) CreateAppointment(
 			WHERE s.id = $4
 			  AND s.branch_id = $2
 			  AND e.branch_id = $2
-			  AND ($8 = '' OR bu.registration_slug = $8)
+			  AND bu.registration_slug = $8
 			  AND EXISTS (
 				  SELECT 1
 				  FROM employee_schedules sch

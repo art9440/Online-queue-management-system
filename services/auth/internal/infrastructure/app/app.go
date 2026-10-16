@@ -61,7 +61,6 @@ func New(ctx context.Context) (*App, error) {
 
 	authService := service.New(userRepo, sessionRepo, tokenManager)
 	cookieManager := httpapi.NewCookieManager(cfg.CookieSecure)
-	log.Info("JWT secret", "secret", cfg.JWTAccessSecret)
 	parser := auth.NewTokenParser(cfg.JWTAccessSecret)
 	handler := httpapi.NewHandler(authService, parser, cookieManager, cfg.AccessTTL, cfg.RefreshTTL)
 
@@ -72,7 +71,7 @@ func New(ctx context.Context) (*App, error) {
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	CorsMux := middleware.CORSMiddleware(mux)
+	CorsMux := middleware.CORSMiddleware(libconfig.LoadCORSAllowedOrigins(ctx), mux)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.AuthPort,

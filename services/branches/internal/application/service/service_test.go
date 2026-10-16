@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 )
 
 func TestGetBranchesForUser_BusinessAdmin_ReturnsBusinessBranches(t *testing.T) {
@@ -623,5 +624,102 @@ func TestGetPublicEmployeesForServiceAndBranchSlug_ReturnsEmployees(t *testing.T
 	}
 	if len(employees) != 1 {
 		t.Fatalf("expected 1 employee, got %d", len(employees))
+	}
+}
+
+func TestGetBranchClients_WhenBusinessAdminOwnsBranch_ShouldReturnClients(t *testing.T) {
+	ctx := context.Background()
+	repo := mocks.NewBranchesRepository()
+	svc := New(repo)
+	repo.BranchBusiness[11] = 7
+	repo.ClientsByBranchID[11] = []domain.Client{{ID: 5, Name: "Alex", Surname: "Stone"}}
+
+	clients, err := svc.GetBranchClients(ctx, &auth.AccessClaims{
+		RoleName:   string(auth.RoleBusinessAdmin),
+		BusinessID: 7,
+	}, 11)
+	if err != nil {
+		t.Fatalf("get branch clients: %v", err)
+	}
+
+	if repo.BranchBelongsCalls != 1 || repo.ClientsByBranchCalls != 1 {
+		t.Fatalf("unexpected calls: belongs=%d clients=%d", repo.BranchBelongsCalls, repo.ClientsByBranchCalls)
+	}
+	if len(clients) != 1 || clients[0].ID != 5 {
+		t.Fatalf("unexpected clients: %#v", clients)
+	}
+}
+
+func TestGetBranchAppointments_WhenManagerRequestsAnotherBranch_ShouldReturnForbidden(t *testing.T) {
+	ctx := context.Background()
+	repo := mocks.NewBranchesRepository()
+	svc := New(repo)
+	managerBranchID := int64(11)
+
+	_, err := svc.GetBranchAppointments(ctx, &auth.AccessClaims{
+		RoleName: string(auth.RoleManager),
+		BranchID: &managerBranchID,
+	}, 12, time.Now())
+	if !errors.Is(err, domain.ErrForbidden) {
+		t.Fatalf("expected forbidden, got %v", err)
+	}
+	if repo.AppointmentsByBranchCalls != 0 {
+		t.Fatalf("expected appointments repository not to be called, got %d", repo.AppointmentsByBranchCalls)
+	}
+}
+
+func TestGetRegistrationSlugForBusiness_WhenBusinessAdminOwnsBusiness_ShouldReturnSlug(t *testing.T) {
+	ctx := context.Background()
+	repo := mocks.NewBranchesRepository()
+	svc := New(repo)
+	repo.SlugByBusinessID[7] = "beautiful-salon"
+
+	registrationSlug, err := svc.GetRegistrationSlugForBusiness(ctx, &auth.AccessClaims{
+		RoleName:   string(auth.RoleBusinessAdmin),
+		BusinessID: 7,
+	}, 7)
+	if err != nil {
+		t.Fatalf("get registration slug: %v", err)
+	}
+
+	if registrationSlug != "beautiful-salon" {
+		t.Fatalf("expected registration slug beautiful-salon, got %q", registrationSlug)
+	}
+	if repo.BusinessIDCalls != 1 || repo.LastBusinessID != 7 {
+		t.Fatalf("unexpected repo call state: calls=%d business_id=%d", repo.BusinessIDCalls, repo.LastBusinessID)
+	}
+}
+
+func TestGetRegistrationSlugForBusiness_WhenUserIsNotBusinessAdmin_ShouldReturnForbidden(t *testing.T) {
+	ctx := context.Background()
+	repo := mocks.NewBranchesRepository()
+	svc := New(repo)
+
+	_, err := svc.GetRegistrationSlugForBusiness(ctx, &auth.AccessClaims{
+		RoleName:   string(auth.RoleManager),
+		BusinessID: 7,
+	}, 7)
+	if !errors.Is(err, domain.ErrForbidden) {
+		t.Fatalf("expected forbidden, got %v", err)
+	}
+	if repo.BusinessIDCalls != 0 {
+		t.Fatalf("expected repository not to be called, got %d", repo.BusinessIDCalls)
+	}
+}
+
+func TestGetRegistrationSlugForBusiness_WhenBusinessAdminRequestsAnotherBusiness_ShouldReturnForbidden(t *testing.T) {
+	ctx := context.Background()
+	repo := mocks.NewBranchesRepository()
+	svc := New(repo)
+
+	_, err := svc.GetRegistrationSlugForBusiness(ctx, &auth.AccessClaims{
+		RoleName:   string(auth.RoleBusinessAdmin),
+		BusinessID: 7,
+	}, 8)
+	if !errors.Is(err, domain.ErrForbidden) {
+		t.Fatalf("expected forbidden, got %v", err)
+	}
+	if repo.BusinessIDCalls != 0 {
+		t.Fatalf("expected repository not to be called, got %d", repo.BusinessIDCalls)
 	}
 }

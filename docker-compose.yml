@@ -1,16 +1,25 @@
-version: "3.9"
+# Whole stack: images are built from local sources.
+#   cp .env.example .env
+#   docker compose up -d --build
+#
+# There is no container_name anywhere, so background workers can be scaled:
+#   docker compose up -d --scale scheduler=2 --scale bot=2
+
+x-app: &app
+  env_file:
+    - .env
+  restart: unless-stopped
+  networks:
+    - online_queue_network
 
 services:
   postgres:
-    image: postgres:15
-    container_name: online_queue_postgres
-    restart: always
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -18,40 +27,39 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - online_queue_network
 
   redis:
-    image: redis:7
-    container_name: redis
-    
-    command: >
-      redis-server
-      --requirepass ${REDIS_PASSWORD}
-      --databases 16 
-    ports:
-      - "6379:6379"
+    image: redis:7-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--databases", "16"]
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
       retries: 5
+    networks:
+      - online_queue_network
 
+  # Admin process (12-factor XII): one-off job from the same code, runs before the app.
   migrate:
+    <<: *app
     build:
       context: .
-      dockerfile: ./services/migrate/migration.Dockerfile
-    container_name: online_queue_migrate
+      dockerfile: services/migrate/migration.Dockerfile
+    restart: "no"
     depends_on:
       postgres:
         condition: service_healthy
-    env_file:
-      - .env
-    restart: "no"
 
   auth:
+    <<: *app
     build:
       context: .
-      dockerfile: ./services/auth/auth.Dockerfile
-    container_name: online_queue_auth
+      dockerfile: services/auth/auth.Dockerfile
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -59,14 +67,14 @@ services:
         condition: service_healthy
     ports:
       - "8082:8082"
-    env_file:
-      - .env
+    environment:
+      SERVICE_NAME: auth
 
   registration:
+    <<: *app
     build:
       context: .
-      dockerfile: ./services/registration/registration.Dockerfile
-    container_name: online_queue_registration
+      dockerfile: services/registration/registration.Dockerfile
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -74,27 +82,27 @@ services:
         condition: service_healthy
     ports:
       - "8081:8081"
-    env_file:
-      - .env
+    environment:
+      SERVICE_NAME: registration
 
   branches:
+    <<: *app
     build:
       context: .
-      dockerfile: ./services/branches/branches.Dockerfile
-    container_name: online_queue_branches
+      dockerfile: services/branches/branches.Dockerfile
     depends_on:
       migrate:
         condition: service_completed_successfully
     ports:
       - "8083:8083"
-    env_file:
-      - .env
+    environment:
+      SERVICE_NAME: branches
 
   booking:
+    <<: *app
     build:
       context: .
-      dockerfile: ./services/booking/booking.Dockerfile
-    container_name: online_queue_booking
+      dockerfile: services/booking/booking.Dockerfile
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -102,34 +110,60 @@ services:
         condition: service_healthy
     ports:
       - "8084:8084"
-    env_file:
-      - .env
+    environment:
+      SERVICE_NAME: booking
 
+  # Background worker: no port, can be scaled.
   scheduler:
+    <<: *app
     build:
       context: .
-      dockerfile: ./services/scheduler/scheduler.Dockerfile
-    container_name: online_queue_scheduler
+      dockerfile: services/scheduler/scheduler.Dockerfile
     depends_on:
       redis:
         condition: service_healthy
       bot:
         condition: service_started
-    env_file:
-      - .env
+    environment:
+      SERVICE_NAME: scheduler
 
   bot:
+    <<: *app
     build:
       context: .
-      dockerfile: ./services/bot/bot.Dockerfile
-    container_name: online_queue_bot
+      dockerfile: services/bot/bot.Dockerfile
     depends_on:
       redis:
         condition: service_healthy
     ports:
       - "8085:8085"
-    env_file:
-      - .env
+    environment:
+      SERVICE_NAME: bot
+
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    ports:
+      # Same origin as `npm run dev`, so CORS and FRONTEND_URL defaults keep working.
+      - "5173:8080"
+    environment:
+      # Addresses the browser uses to reach the APIs.
+      AUTH_URL: ${AUTH_URL:-http://localhost:8082}
+      REGISTRATION_URL: ${REGISTRATION_URL:-http://localhost:8081}
+      BRANCHES_URL: ${BRANCHES_URL:-http://localhost:8083}
+      BOOKING_URL: ${BOOKING_URL:-http://localhost:8084}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - online_queue_network
 
 volumes:
   postgres_data:
+
+networks:
+  online_queue_network:
+    name: online_queue_network

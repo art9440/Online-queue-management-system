@@ -4,6 +4,7 @@ import (
 	"Online-queue-management-system/libs/config"
 	"context"
 	"fmt"
+	"strings"
 )
 
 type BookingConfig struct {
@@ -15,6 +16,7 @@ type BookingConfig struct {
 	GoogleClientID  string
 	GoogleSecret    string
 	GoogleRedirect  string
+	FrontendURL     string
 }
 
 func LoadConfig(ctx context.Context) (*BookingConfig, error) {
@@ -46,5 +48,6 @@ func LoadConfig(ctx context.Context) (*BookingConfig, error) {
 		GoogleClientID:  config.Get(ctx, "GOOGLE_CLIENT_ID", ""),
 		GoogleSecret:    config.Get(ctx, "GOOGLE_CLIENT_SECRET", ""),
 		GoogleRedirect:  config.Get(ctx, "GOOGLE_REDIRECT_URL", ""),
+		FrontendURL:     strings.TrimRight(config.Get(ctx, "FRONTEND_URL", "http://localhost:5173"), "/"),
 	}, nil
 }

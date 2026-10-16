@@ -7,22 +7,32 @@ import (
 )
 
 type Config struct {
-	Level  slog.Level
-	JSON   bool
-	Source bool
+	Level   slog.Level
+	JSON    bool
+	Source  bool
+	Service string
 }
 
+// New writes logs to stdout only; collecting and routing them is the job of the environment.
 func New(cfg Config) *slog.Logger {
-	var h slog.Handler
 	opts := &slog.HandlerOptions{
 		Level:     cfg.Level,
 		AddSource: cfg.Source,
 	}
 
+	if cfg.Service == "" {
+		cfg.Service = os.Getenv("SERVICE_NAME")
+	}
+
+	var h slog.Handler
 	if cfg.JSON {
 		h = slog.NewJSONHandler(os.Stdout, opts)
 	} else {
 		h = slog.NewTextHandler(os.Stdout, opts)
+	}
+
+	if cfg.Service != "" {
+		h = h.WithAttrs([]slog.Attr{slog.String("service", cfg.Service)})
 	}
 
 	return slog.New(h)

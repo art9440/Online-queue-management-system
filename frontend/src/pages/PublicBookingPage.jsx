@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import {
     createPublicAppointment,
+    getBookingUrl,
+    getGoogleOAuthUrl,
     getPublicBranches,
     getPublicEmployees,
     getPublicServices,
@@ -43,11 +45,12 @@ const formatSlot = (slot, fallbackTimezone = "Asia/Novosibirsk") => {
     return `${formatter.format(new Date(slot.start_time))} - ${formatter.format(new Date(slot.end_time))}`;
 };
 
-const OptionButton = ({ active, title, subtitle, onClick }) => {
+const OptionButton = ({ active, title, subtitle, onClick, dataCy }) => {
     return (
         <button
             type="button"
             onClick={onClick}
+            data-cy={dataCy}
             className={`w-full text-left p-4 rounded-lg border transition ${
                 active
                     ? "border-blue-500 bg-blue-50"
@@ -63,6 +66,7 @@ const OptionButton = ({ active, title, subtitle, onClick }) => {
 const BackButton = ({ onClick }) => {
     return (
         <button
+            data-cy="back-button"
             type="button"
             onClick={onClick}
             className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
@@ -72,8 +76,38 @@ const BackButton = ({ onClick }) => {
     );
 };
 
+const toGoogleCalendarDate = (value) => new Date(value).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+
+// Opens Google Calendar's "new event" form prefilled with the appointment; works without OAuth.
+const buildGoogleCalendarLink = (appointment, location) => {
+    const params = new URLSearchParams({
+        action: "TEMPLATE",
+        text: appointment.service.name,
+        dates: `${toGoogleCalendarDate(appointment.start_time)}/${toGoogleCalendarDate(appointment.end_time)}`,
+        details: `Мастер: ${appointment.employee.name} ${appointment.employee.surname}`,
+    });
+    if (location) {
+        params.set("location", location);
+    }
+
+    return `https://calendar.google.com/calendar/render?${params}`;
+};
+
+const calendarStatusMessages = {
+    success: {
+        text: "Запись добавлена в ваш Google Календарь.",
+        className: "bg-green-50 border-green-200 text-green-700",
+    },
+    error: {
+        text: "Не удалось добавить запись в Google Календарь. Попробуйте скачать файл .ics.",
+        className: "bg-red-50 border-red-200 text-red-700",
+    },
+};
+
 export const PublicBookingPage = () => {
     const { registrationSlug = "" } = useParams();
+    const [searchParams] = useSearchParams();
+    const calendarStatus = calendarStatusMessages[searchParams.get("calendar")];
 
     const [step, setStep] = useState("service");
     const [serviceId, setServiceId] = useState("");
@@ -170,12 +204,33 @@ export const PublicBookingPage = () => {
         }
     };
 
+    const isValidPhone = (phone) => {
+        if (!phone) return false;
+        const digitsOnly = phone.replace(/\D/g, '');
+        return digitsOnly.length === 11 && (['7', '8', '9'].includes(digitsOnly[0]));
+    };
+
+    const isValidEmail = (email) => {
+        if (!email || email.length > 254) return false;
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        return emailRegex.test(email);
+};
+
     const validateClient = () => {
         const errors = {};
 
         if (!client.name.trim()) errors.name = "Введите имя";
         if (!client.surname.trim()) errors.surname = "Введите фамилию";
-        if (!client.phone.trim()) errors.phone = "Введите телефон";
+
+        if (!client.phone.trim()) { 
+            errors.phone = "Введите телефон";
+        } else if (!isValidPhone(client.phone)) {
+            errors.phone = "Неверный формат телефона";
+        }
+
+        if (client.email && client.email.trim() && !isValidEmail(client.email)) {
+            errors.email = "Неверный формат email";
+        }
 
         setFieldError(errors);
         return Object.keys(errors).length === 0;
@@ -202,6 +257,41 @@ export const PublicBookingPage = () => {
                 comment: client.comment.trim() || undefined,
             },
         });
+    };
+
+    const googleCalendarExportMutation = useMutation({
+        mutationFn: async () => {
+            const appointment = bookingMutation.data;
+            
+            return getGoogleOAuthUrl(appointment.google_calendar_export_url);
+        },
+
+        onSuccess: (data) => {
+            if (!data?.url) {
+                setFieldError((prev) => ({
+                    ...prev,
+                    submit: 'Google OAuth URL no exist',
+                }));
+
+                return;
+            }
+
+            globalThis.location.href = data.url;
+        },
+
+        onError: (error) => {
+            setFieldError((prev) => ({
+                ...prev,
+                submit:
+                    error instanceof Error
+                        ? error.message
+                        : 'Google Calendar export error',
+            }));
+        },
+    });
+
+    const handleGoogleCalendarExport = () => {
+        googleCalendarExportMutation.mutate();
     };
 
     if (bookingMutation.isSuccess) {
@@ -238,6 +328,48 @@ export const PublicBookingPage = () => {
                     >
                         Создать еще одну запись
                     </Button>
+
+                    {fieldError.submit && (
+                        <div className="mt-5 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+                            {fieldError.submit}
+                        </div>
+                    )}
+
+                    <div className="mt-7 pt-5 border-t border-gray-100 space-y-3">
+                        <p className="text-sm font-medium text-gray-700">Добавить в календарь</p>
+
+                        {appointment.ics_download_url && (
+                            <a
+                                data-cy="ics-download-button"
+                                href={getBookingUrl(appointment.ics_download_url)}
+                                download
+                                className="block w-full p-3 rounded-md transition font-medium text-center border border-gray-300 hover:bg-gray-50 text-gray-700 bg-white"
+                            >
+                                Скачать файл .ics
+                            </a>
+                        )}
+
+                        <a
+                            data-cy="google-calendar-link"
+                            href={buildGoogleCalendarLink(appointment, selectedBranch?.address)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block w-full p-3 rounded-md transition font-medium text-center border border-gray-300 hover:bg-gray-50 text-gray-700 bg-white"
+                        >
+                            Открыть в Google Календаре
+                        </a>
+
+                        {appointment.google_calendar_export_url && (
+                            <Button
+                                data-cy="google-calendar-button"
+                                variant="outline"
+                                loading={googleCalendarExportMutation.isPending}
+                                onClick={handleGoogleCalendarExport}
+                            >
+                                Сохранить в Google Календарь автоматически
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </div>
         );
@@ -251,6 +383,15 @@ export const PublicBookingPage = () => {
                     <h1 className="text-gray-800 text-2xl font-bold">Онлайн-запись</h1>
                     <p className="text-gray-500 text-sm mt-2">{stepTitles[step]}</p>
                 </div>
+
+                {calendarStatus && (
+                    <div
+                        data-cy="calendar-status"
+                        className={`mb-5 p-4 border rounded-xl text-sm ${calendarStatus.className}`}
+                    >
+                        {calendarStatus.text}
+                    </div>
+                )}
 
                 {(pageError || fieldError.submit) && (
                     <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
@@ -277,6 +418,7 @@ export const PublicBookingPage = () => {
 
                         {servicesQuery.data?.map((service) => (
                             <OptionButton
+                                dataCy="service-option-button"
                                 key={service.id}
                                 active={String(service.id) === String(serviceId)}
                                 title={service.name}
@@ -288,7 +430,8 @@ export const PublicBookingPage = () => {
                             />
                         ))}
 
-                        <Button
+                        <Button 
+                            data-cy="go-to-branch-button"
                             className="mt-5"
                             loading={false}
                             onClick={() => serviceId && setStep("branch")}
@@ -308,6 +451,7 @@ export const PublicBookingPage = () => {
 
                         {branchesQuery.data?.map((branch) => (
                             <OptionButton
+                                dataCy="branch-option-button"
                                 key={branch.id}
                                 active={String(branch.id) === String(branchId)}
                                 title={branch.name}
@@ -321,7 +465,9 @@ export const PublicBookingPage = () => {
 
                         <div className="flex items-center gap-3 mt-5">
                             <div className="w-28"><BackButton onClick={goBack} /></div>
-                            <Button onClick={() => branchId && setStep("employee")}>
+                            <Button 
+                                data-cy="go-to-master-button"
+                                onClick={() => branchId && setStep("employee")}>
                                 Выбрать мастера
                             </Button>
                         </div>
@@ -338,6 +484,7 @@ export const PublicBookingPage = () => {
 
                         {employeesQuery.data?.map((employee) => (
                             <OptionButton
+                                dataCy="master-option-button"
                                 key={employee.id}
                                 active={String(employee.id) === String(employeeId)}
                                 title={`${employee.name} ${employee.surname}`}
@@ -351,7 +498,9 @@ export const PublicBookingPage = () => {
 
                         <div className="flex items-center gap-3 mt-5">
                             <div className="w-28"><BackButton onClick={goBack} /></div>
-                            <Button onClick={() => employeeId && setStep("time")}>
+                            <Button 
+                                data-cy="go-to-time-button"
+                                onClick={() => employeeId && setStep("time")}>
                                 Выбрать дату
                             </Button>
                         </div>
@@ -361,6 +510,7 @@ export const PublicBookingPage = () => {
                 {step === "time" && (
                     <div>
                         <Input
+                            data-cy="date-input"
                             label="Дата"
                             type="date"
                             name="date"
@@ -392,6 +542,7 @@ export const PublicBookingPage = () => {
                                 <div className="grid grid-cols-2 gap-3">
                                     {slotsQuery.data.map((slot) => (
                                         <button
+                                            data-cy="time-select-button"
                                             key={slot.start_time}
                                             type="button"
                                             onClick={() => setSelectedSlot(slot)}
@@ -410,7 +561,9 @@ export const PublicBookingPage = () => {
 
                         <div className="flex items-center gap-3 mt-5">
                             <div className="w-28"><BackButton onClick={goBack} /></div>
-                            <Button onClick={() => selectedSlot && setStep("client")}>
+                            <Button 
+                                data-cy="go-to-data-button"
+                                onClick={() => selectedSlot && setStep("client")}>
                                 Ввести данные
                             </Button>
                         </div>
@@ -420,6 +573,7 @@ export const PublicBookingPage = () => {
                 {step === "client" && (
                     <form onSubmit={handleSubmit} noValidate>
                         <Input
+                            data-cy="data-name-input"
                             label="Имя"
                             name="name"
                             value={client.name}
@@ -429,6 +583,7 @@ export const PublicBookingPage = () => {
                         />
 
                         <Input
+                            data-cy="data-surname-input"
                             label="Фамилия"
                             name="surname"
                             value={client.surname}
@@ -438,6 +593,7 @@ export const PublicBookingPage = () => {
                         />
 
                         <Input
+                            data-cy="data-phone-input"
                             label="Телефон"
                             name="phone"
                             value={client.phone}
@@ -447,6 +603,7 @@ export const PublicBookingPage = () => {
                         />
 
                         <Input
+                            data-cy="data-email-input"
                             label="Email"
                             type="email"
                             name="email"
@@ -454,9 +611,11 @@ export const PublicBookingPage = () => {
                             onChange={handleClientChange}
                             placeholder="email@example.com"
                             required={false}
+                            error={fieldError.email}
                         />
 
                         <Input
+                            data-cy="data-telegram-input"
                             label="Telegram"
                             name="tg_username"
                             value={client.tg_username}
@@ -466,6 +625,7 @@ export const PublicBookingPage = () => {
                         />
 
                         <Input
+                            data-cy="data-comment-input"
                             label="Комментарий"
                             name="comment"
                             value={client.comment}
@@ -476,7 +636,9 @@ export const PublicBookingPage = () => {
 
                         <div className="flex items-center gap-3 mt-5">
                             <div className="w-28"><BackButton onClick={goBack} /></div>
-                            <Button type="submit" loading={bookingMutation.isPending}>
+                            <Button
+                                data-cy="confirm-booking-button" 
+                                type="submit" loading={bookingMutation.isPending}>
                                 Записаться
                             </Button>
                         </div>

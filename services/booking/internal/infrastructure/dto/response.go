@@ -79,6 +79,9 @@ type CreateAppointmentResponse struct {
 	EndTime   string  `json:"end_time"`
 	Status    string  `json:"status"`
 	Comment   *string `json:"comment,omitempty"`
+
+	GoogleCalendarExportURL string `json:"google_calendar_export_url,omitempty"`
+	CalendarICSURL          string `json:"ics_download_url,omitempty"`
 }
 
 type BranchResponse struct {
@@ -133,6 +136,9 @@ func CreateAppointmentResponseFromDomain(
 		EndTime:   output.EndTime.Format(time.RFC3339),
 		Status:    string(output.Status),
 		Comment:   output.Comment,
+
+		GoogleCalendarExportURL: output.GoogleCalendarExportURL,
+		CalendarICSURL:          output.CalendarICSURL,
 	}
 }
 

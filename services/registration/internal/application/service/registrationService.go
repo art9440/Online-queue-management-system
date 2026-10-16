@@ -22,11 +22,11 @@ type RegistrationService struct {
 	repoRedis    PendingRepo
 	recoveryRepo RecoveryRepo
 	repoPostgres UserRepo
-	emailQueue   *email.EmailQueue
+	emailQueue   EmailQueue
 	AppEnv       string
 }
 
-func NewRegistrationService(repoRedis PendingRepo, recoveryRepo RecoveryRepo, repoPostgres UserRepo, queue *email.EmailQueue, appEnv string) *RegistrationService {
+func NewRegistrationService(repoRedis PendingRepo, recoveryRepo RecoveryRepo, repoPostgres UserRepo, queue EmailQueue, appEnv string) *RegistrationService {
 	return &RegistrationService{
 		repoRedis:    repoRedis,
 		recoveryRepo: recoveryRepo,
@@ -70,7 +70,7 @@ func (s *RegistrationService) Register(ctx context.Context, req RegisterInput) (
 	log.Info("pending registration saved", "registrationID", pendingItem.ID)
 
 	if s.AppEnv != "test" {
-		s.emailQueue.Enqueue(email.EmailMessage{
+		if err := s.emailQueue.Enqueue(ctx, email.EmailMessage{
 			To:      req.Email,
 			Subject: "Код подтверждения",
 			Body:    code,
@@ -80,7 +80,10 @@ func (s *RegistrationService) Register(ctx context.Context, req RegisterInput) (
 			<h1 style="font-size: 32px; letter-spacing: 5px;">%s</h1>
 			<p>Введите этот код для завершения регистрации.</p>
 		`, code),
-		})
+		}); err != nil {
+			log.Error("failed to queue verification email", "email", req.Email, "registrationID", pendingItem.ID, "err", err)
+			return RegisterOutput{}, err
+		}
 		log.Info("verification email queued", "email", req.Email, "registrationID", pendingItem.ID)
 	} else {
 		log.Info("skip sending email in test env",
@@ -160,13 +163,11 @@ func (s *RegistrationService) ResendCode(ctx context.Context, req ResendInput) e
 		return err
 	}
 
-	s.emailQueue.Enqueue(email.EmailMessage{
+	return s.emailQueue.Enqueue(ctx, email.EmailMessage{
 		To:      pendingItem.Email,
 		Subject: "Код подтверждения",
 		Body:    pendingItem.Code,
 	})
-
-	return nil
 }
 
 func (s *RegistrationService) RecoverPassword(ctx context.Context, req PasswordRecoveryInput) (PasswordRecoveryOutput, error) {
@@ -193,11 +194,14 @@ func (s *RegistrationService) RecoverPassword(ctx context.Context, req PasswordR
 			return PasswordRecoveryOutput{}, err
 		}
 
-		s.emailQueue.Enqueue(email.EmailMessage{
+		if err := s.emailQueue.Enqueue(ctx, email.EmailMessage{
 			To:      req.Email,
 			Subject: "Код восстановления пароля",
 			Body:    code,
-		})
+		}); err != nil {
+			log.Error("failed to queue password recovery code", "email", req.Email, "recoveryID", recoveryID, "err", err)
+			return PasswordRecoveryOutput{}, err
+		}
 		log.Info("password recovery code queued", "email", req.Email, "recoveryID", recoveryID)
 	} else {
 		log.Warn("password recovery requested for unknown email", "email", req.Email, "recoveryID", recoveryID)
@@ -243,7 +247,7 @@ func (s *RegistrationService) ConfirmPasswordRecovery(ctx context.Context, req P
 	}
 
 	if updated {
-		s.emailQueue.Enqueue(email.EmailMessage{
+		if err := s.emailQueue.Enqueue(ctx, email.EmailMessage{
 			To:      recoveryItem.Email,
 			Subject: "Восстановление пароля",
 			HTMLBody: fmt.Sprintf(`
@@ -252,7 +256,10 @@ func (s *RegistrationService) ConfirmPasswordRecovery(ctx context.Context, req P
 				<h1 style="font-size: 28px; letter-spacing: 2px;">%s</h1>
 				<p>Войдите с этим паролем и сразу смените его на новый.</p>
 			`, temporaryPassword),
-		})
+		}); err != nil {
+			log.Error("failed to queue temporary password email", "email", recoveryItem.Email, "recoveryID", req.RecoveryID, "err", err)
+			return err
+		}
 		log.Info("password recovery completed", "email", recoveryItem.Email, "recoveryID", req.RecoveryID)
 	} else {
 		log.Warn("password recovery confirmed for unknown email", "email", recoveryItem.Email, "recoveryID", req.RecoveryID)

@@ -13,7 +13,7 @@ import (
 func main() {
 	log := logger.New(logger.Config{
 		Level:  slog.LevelInfo,
-		JSON:   false,
+		JSON:   true,
 		Source: true,
 	})
 

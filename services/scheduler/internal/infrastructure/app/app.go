@@ -40,7 +40,13 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	telegramDispatcher := bot.NewDispatcher(cfg.BotURL)
 	emailSender := email.NewEmailSender(cfg.EmailSenderCfg)
 	emailDispatcher := emaildispatcher.NewDispatcher(emailSender)
-	scheduler := service.New(repo, telegramDispatcher, emailDispatcher, cfg.PollInterval, cfg.BatchSize)
+	scheduler := service.New(repo, telegramDispatcher, emailDispatcher, service.Config{
+		PollInterval: cfg.PollInterval,
+		BatchSize:    cfg.BatchSize,
+		Lease:        cfg.Lease,
+		MaxAttempts:  cfg.MaxAttempts,
+		RetryDelay:   cfg.RetryDelay,
+	})
 
 	return &App{
 		scheduler: scheduler,
