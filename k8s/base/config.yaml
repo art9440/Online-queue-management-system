@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oqms-config
+  namespace: oqms
+data:
+  # --- PostgreSQL (container) ---
+  POSTGRES_USER: admin
+  POSTGRES_DB: online_queue_db
+
+  # --- PostgreSQL (clients: services and migrate) ---
+  # Hosts are Service names inside the namespace.
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_USER: admin
+  DB_SSLMODE: disable
+
+  # --- Redis ---
+  REDIS_ADDR: redis:6379
+  REDIS_DB: "0"
+
+  # --- HTTP ports the containers listen on ---
+  REGISTRATION_PORT: "8081"
+  AUTH_PORT: "8082"
+  BRANCHES_PORT: "8083"
+  BOOKING_PORT: "8084"
+  BOT_PORT: "8085"
+
+  # --- Browser access: everything is served from one host via Ingress ---
+  CORS_ALLOWED_ORIGINS: http://oqms.local
+  FRONTEND_URL: http://oqms.local
+
+  # --- Auth (JWT in HTTP-only cookies) ---
+  ACCESS_TOKEN_TTL: 15m
+  REFRESH_TOKEN_TTL: 168h
+  # "true" once the Ingress serves HTTPS
+  COOKIE_SECURE: "false"
+
+  # --- Email (registration codes, password recovery, reminders) ---
+  SMTP_HOST: "smtp.gmail.com"
+  SMTP_PORT: "587"
+  SMTP_USER: "a.murashev@g.nsu.ru"
+  EMAIL_TIMEOUT: 20s
+
+  # --- Registration email queue (Redis stream email:outbox) ---
+  NUM_WORKERS: "10"
+  RATE_LIMIT: 10s
+  WRK_TIMEOUT: 30s
+  EMAIL_RETRY_AFTER: 1m
+  EMAIL_MAX_ATTEMPTS: "5"
+  # "test" makes the registration code always 123456; set "" for real use
+  APP_ENV: test
+
+  # --- Booking: Google Calendar (all three GOOGLE_* must be set to enable it) ---
+  GOOGLE_CLIENT_ID: ""
+  GOOGLE_REDIRECT_URL: http://oqms.local/api/booking/google-calendar/callback
+
+  # --- Telegram bot (token is in the Secret; empty token disables the bot) ---
+  TELEGRAM_POLLING_TIMEOUT: "30"
+  TELEGRAM_POLLING_INTERVAL: 1s
+
+  # --- Scheduler (reminders by email and Telegram) ---
+  BOT_URL: http://bot:8085
+  SCHEDULER_POLL_INTERVAL: 30s
+  SCHEDULER_BATCH_SIZE: "100"
+  SCHEDULER_LEASE: 5m
+  SCHEDULER_MAX_ATTEMPTS: "5"
+  SCHEDULER_RETRY_DELAY: 1m

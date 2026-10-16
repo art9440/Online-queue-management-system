@@ -1,0 +1,53 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: oqms
+  namespace: oqms
+spec:
+  parentRefs:
+    - name: oqms
+  hostnames:
+    - oqms.local
+  rules: 
+    - matches:
+        - path: { type: PathPrefix, value: /auth }
+      backendRefs:
+        - name: auth
+          port: 8082
+
+    - matches:
+        - path: { type: PathPrefix, value: /api/registration }
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path: { type: ReplacePrefixMatch, replacePrefixMatch: / }
+      backendRefs:
+        - name: registration
+          port: 8081
+
+    - matches:
+        - path: { type: PathPrefix, value: /api/branches }
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path: { type: ReplacePrefixMatch, replacePrefixMatch: / }
+      backendRefs:
+        - name: branches
+          port: 8083
+
+    - matches:
+        - path: { type: PathPrefix, value: /api/booking }
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path: { type: ReplacePrefixMatch, replacePrefixMatch: / }
+      backendRefs:
+        - name: booking
+          port: 8084
+
+    
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      backendRefs:
+        - name: frontend
+          port: 80

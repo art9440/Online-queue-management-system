@@ -1,0 +1,27 @@
+# Background worker: no HTTP server, so no ports, probes or Service.
+# If the process exits, Kubernetes restarts the container on its own.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scheduler
+  namespace: oqms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scheduler
+  template:
+    metadata:
+      labels:
+        app: scheduler
+    spec:
+      containers:
+        - name: scheduler
+          image: scheduler-service:v1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SERVICE_NAME
+              value: scheduler
+          envFrom:
+            - configMapRef: { name: oqms-config }
+            - secretRef: { name: oqms-secrets }

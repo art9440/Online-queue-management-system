@@ -1,0 +1,18 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migrate
+  namespace: oqms
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migrations
+          image: migration-service:v1
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef: { name: oqms-config }
+            - secretRef:    { name: oqms-secrets }

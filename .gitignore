@@ -143,3 +143,6 @@ yarn-error.log
 frontend/.vite/
 frontend/node_modules/
 frontend/dist/
+
+# Kubernetes secrets (template: k8s/base/secret.example.yaml)
+k8s/base/secret.yaml
